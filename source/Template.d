@@ -9,6 +9,7 @@ import std.array;
 import std.container;
 import std.stdio;
 import std.uni;
+import std.format;
 import Input;
 import Output;
 import Data;
@@ -50,6 +51,7 @@ public
 				{
 					write(arg);
 				}
+				writeln();
 			}
 			
 			interface IReference
@@ -115,7 +117,6 @@ public
 					super(posn);
 					m_name    = name;
 					m_subtype = subtype;
-					writeln("Block ref : ", m_name);
 				}
 				
 				override void Expand(OutputStack output)
@@ -139,7 +140,7 @@ public
 				Block  m_subtype;
 			}
 			
-			class Block
+			final class Block
 			{
 				this (string posn, string name, string subtype, Block filename)
 				{
@@ -152,6 +153,18 @@ public
 				void Add(IReference data)
 				{
 					m_blocks ~= data;
+				}
+				
+				string Ref()
+				{
+					if ((m_subtype is null) || (m_subtype.length == 0))
+					{
+						return m_name;
+					}
+					else
+					{
+						return format("%s:%s", m_name, m_subtype);
+					}
 				}
 				
 				string Posn()    {return m_posn;}
@@ -569,6 +582,57 @@ public
 			
 			bool ParseInclude(string line, InputStack input)
 			{
+				ulong i = 0;
+				string posn = input.Posn();
+				
+				//strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if (i >= line.length)
+				{
+					Error(posn, "No file name specified");
+				}
+				else if (line[i] == '\"')
+				{
+					// Quoted text
+					ulong start = i;
+					while ((i < line.length) && (line[i] != '\"'))
+					{
+						i += 1;
+					}
+					
+					if (start == i)
+					{
+						// No name spacified
+						Error(posn, "No file name specified");
+					}
+					else if (line[i] != '\"')
+					{
+						// Unclosed Quoted
+						Error(posn, "Unclosed Quoted : ", line[start..i]);
+					}
+					else if (!input.Push(line[start..i]))
+					{
+						Error(posn, "Can't include : ", line[start..i]);
+					}
+				}
+				else
+				{
+					// Unquoted text
+					ulong start = i;
+					while ((i < line.length) && !isWhite(line[i]))
+					{
+						i += 1;
+					}
+					
+					if (!input.Push(line[start..i]))
+					{
+						Error(posn, "Can't include : ", line[start..i]);
+					}
+				}
 				return true;
 			}
 			
@@ -613,6 +677,8 @@ public
 				else
 				{
 					// Error Illegal name
+					Error(posn, "Illegal name : ", line[start..$]);
+					i = line.length;
 				}
 				
 				//strip white space
@@ -624,6 +690,7 @@ public
 				if (i < line.length)
 				{
 					// Error ilegal reference
+					Error(posn, "Illegal reference : ", line[i..$]);
 				}
 				
 				return reference;
@@ -642,7 +709,7 @@ public
 					}
 					else
 					{
-						Error(posn, "Duplicate block definition : ", block.Name(), ":", block.SubType());
+						Error(posn, "Duplicate block definition : ", block.Ref());
 					}
 				}
 				return block;

@@ -48,9 +48,10 @@ public
 			return m_stack.empty();
 		}
 		
-		void Push(string filename)
+		bool Push(string filename)
 		{
 			m_stack.insert(Input(filename));
+			return true;
 		}
 		
 		void Pop()
