@@ -1,0 +1,681 @@
+//////////////////////////////////////////////////////////////////
+//
+//  Copyright 2025 david@the-hut.net
+//  All rights reserved
+//
+@safe:
+
+import std.array;
+import std.container;
+import std.stdio;
+import std.uni;
+import Input;
+import Output;
+import Data;
+
+public
+{	
+	class Template
+	{
+		this(string filename)
+		{
+			Parse(new InputStack(filename));
+		}
+		
+		void Generate(NullOutput output, IDataBlock context)
+		{
+			m_output = new OutputStack(output);
+			m_data   = new DataStack(context);
+			
+			auto block = FindBlock("<ROOT>", "ROOT", "");
+			if (block !is null)
+			{
+				block.Generate(m_output);
+			}
+			else
+			{
+				Error("<ROOT>", "No ROOT block");
+			}
+			
+			m_output.Close();
+			m_output = null;
+		}			
+		
+		private
+		{
+			void Error(string[] params ...)
+			{
+				write("Error : ");
+				foreach(arg ; params)
+				{
+					write(arg);
+				}
+			}
+			
+			interface IReference
+			{
+				void Expand(OutputStack output);
+			}
+			
+			class TextRef : IReference
+			{
+				this(string text)
+				{
+					m_text = text;
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					output.Write(m_text);
+				}
+				
+				string m_text;
+			}
+			
+			abstract class BaseRef : IReference
+			{
+				this(string posn)
+				{
+					m_posn = posn;
+				}
+				
+				final string Posn() { return m_posn;}
+				
+				final void ExpandBlock(OutputStack output, Block block, string name, string subtype)
+				{
+					if (block !is null)
+					{
+						block.Generate(output);
+					}
+					else if ((name == "CONFIG") && this.outer.m_data.Root().DoBlock(output, name, subtype))
+					{
+						// Config in the root block
+					}
+					else if (this.outer.m_data.DoBlock(output, name, subtype))
+					{
+						// Block is handled by the data item
+					}
+					else
+					{
+						// No such block
+						Error(m_posn, "No such block ", name,":",subtype);
+					}
+				}
+				
+				private
+				{
+					string m_posn;
+				}
+			}
+			
+			class BlockRef : BaseRef
+			{
+				this(string posn, string name, Block subtype)
+				{
+					super(posn);
+					m_name    = name;
+					m_subtype = subtype;
+					writeln("Block ref : ", m_name);
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					string subtype = "";
+					
+					if (m_subtype !is null)
+					{
+						auto text = new TextOutput();
+						auto stack  = new OutputStack(text);
+						m_subtype.Generate(stack);
+						subtype = text.Text();
+						stack.Close();
+					}
+					
+					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+					ExpandBlock(output, block, m_name, subtype);
+				}
+				
+				string m_name;
+				Block  m_subtype;
+			}
+			
+			class Block
+			{
+				this (string posn, string name, string subtype, Block filename)
+				{
+					m_posn     = posn;
+					m_name     = name;
+					m_subtype  = subtype;
+					m_filename = filename;
+				}
+				
+				void Add(IReference data)
+				{
+					m_blocks ~= data;
+				}
+				
+				string Posn()    {return m_posn;}
+				string Name()    {return m_name;}
+				string SubType() {return m_subtype;}
+				
+				bool Match(string name, string subtype)
+				{
+					return (m_name == name) &&
+						   ((m_subtype is null) || (m_subtype == "") || (m_subtype == subtype));
+				}
+				
+				void Generate(OutputStack output)
+				{
+					if (m_filename !is null)
+					{
+						auto text_output = new TextOutput();
+						auto stack       = new OutputStack(text_output);
+						m_filename.Generate(stack);
+						output.Push(new FileOutput(text_output.Text()));
+						stack.Close();
+					}
+					
+					foreach (reference; m_blocks)
+					{
+						reference.Expand(output);
+					}
+					
+					if (m_filename !is null)
+					{
+						output.Pop();
+					}
+				}
+				
+				string       m_name;
+				string       m_subtype;
+				string       m_posn;
+				Block        m_filename;
+				IReference[] m_blocks;
+			}
+		
+			void Parse(InputStack input)
+			{
+				Appender!(char[]) text;
+				
+				Block block = null;
+				
+				while (!input.Eof())
+				{
+					ulong textStart = 0;
+					auto  line = input.ReadLine();
+					
+					if (block !is null)
+					{
+						for (ulong i = 0; (i < line.length); i += 1)
+						{
+							if (line[i] == '!')
+							{
+								if ((i < line.length -1) &&
+								    (line[i+1] == '['))
+								{
+									// Add Text line line[textStart .. i]
+									text ~= line[textStart .. i];
+									block.Add(new TextRef(text[].idup()));
+									text.clear();
+									
+									// Reference
+									i += 2;
+									ulong start = i;
+									
+									for (; (i < line.length-1); i += 1)
+									{
+										if ((line[i+0] == ']') &&
+											(line[i+1] == '!'))
+										{
+											auto reference = ParseReference(input.Posn(), line[start .. i]);
+											if (reference !is null)
+											{
+												block.Add(reference);
+											}
+											textStart = i+2;
+											i += 1;
+											break;
+										}
+									}
+								}
+								else if ((i < line.length -4) &&
+								    (line[i..i+4] == "!END"))
+								{
+									text ~= line[textStart .. i];
+									block.Add(new TextRef(text[].idup()));
+									text.clear();
+									
+									// End
+									block = null;
+									break;
+								}
+								else
+								{
+									//Nothing to do
+								}
+							}
+						}
+						text ~= line[textStart .. $];
+					}
+					else
+					{
+						if (line.length > 4)
+						{
+							if (line[0 .. 4] == "!BLK")
+							{
+								block = ParseBlock(input.Posn(), line[4..$]);
+								text.clear();
+								continue;
+							}
+							else if (line[0 .. 4] == "!FIL")
+							{
+								block = ParseFileBlock(input.Posn(), line[4..$]);
+								text.clear();
+								continue;
+							}
+							else if (line[0 .. 4] == "!INC")
+							{
+								write("Parse include : ", line);
+								if (ParseInclude(line[4..$], input))
+								{
+								}
+								continue;
+							}
+						}
+						
+						for (ulong i = 0; (i < line.length); i += 1)
+						{
+							if (isWhite(line[i]))
+							{
+							}
+							else if ((i < line.length -1) &&
+							    (line[i+0] == '/') &&
+								(line[i+1] == '/'))
+							{
+								// Comment line
+								i = line.length;
+							}
+							else if ((i < line.length -1) &&
+							    (line[i+0] == '%') &&
+								(line[i+1] == '%'))
+							{
+								// Comment line
+								i = line.length;
+							}
+							else
+							{
+								Error(input.Posn(), "Illegal text : ", line);
+							}
+						}
+					}
+				}
+				
+				if (block !is null)
+				{
+					Error(input.Posn(), "Unclosed block");
+				}
+			}
+			
+			string ParseBlockName(string posn, string line, ref string name, ref string subtype)
+			{
+				ulong i = 0;
+				ulong start;
+				
+				// Strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				// Name
+				start = i;
+				while ((i < line.length) && IsBlockNameChar(line[i]))
+				{
+					i += 1;
+				}
+				
+				if (start == i)
+				{
+					// No name
+					Error(posn, "Missing block name : ", line);
+				}
+				else
+				{
+					name = line[start .. i];
+				}
+				
+				if ((i < line.length) && (line[i] == ':'))
+				{
+					// Subtype
+					i += 1;
+					start = i;
+					while ((i < line.length) && 
+							(isAlphaNum(line[i]) ||
+							(line[i] == '_') ||
+							(line[i] == '-')))
+					{
+						i += 1;
+					}
+					
+					if ((i < line.length) && !isWhite(line[i]))
+					{
+						//Illeghal Subtype
+						Error(posn, "Missing illegal subtype : ", line);
+					}
+					else if (start != i)
+					{
+						subtype = line[start .. i];
+					}
+				}
+				
+				return (i < line.length)?(line[i..$]):("");
+			}
+			
+			
+			bool ParseBlockAssignment(string posn, string line, Block block)
+			{
+				ulong i = 0;
+				bool  defined = false;
+				
+				// Strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if ((i < line.length) && (line[i] == '='))
+				{
+					// block
+					Appender!(char[]) text;
+					defined = true;
+					i += 1;
+					ulong textStart = i;
+					
+					for (; (i < line.length); i += 1)
+					{
+						if (line[i] == '!')
+						{
+							if ((i < line.length -1) &&
+								(line[i+1] == '['))
+							{
+								// Add Text line line[textStart .. i]
+								text ~= line[textStart .. i];
+								block.Add(new TextRef(text[].idup()));
+								text.clear();
+								
+								// Reference
+								i += 2;
+								ulong start = i;
+								
+								for (; (i < line.length-1); i += 1)
+								{
+									if ((line[i+0] == ']') &&
+										(line[i+1] == '!'))
+									{
+										IReference reference = ParseReference(posn, line[start .. i]);
+										if (reference !is null)
+										{
+											block.Add(reference);
+										}
+										textStart = i+2;
+										i += 1;
+										break;
+									}
+								}
+							}
+							else if ((line[i] == '\r') || (line[i] == '\n'))
+							{
+								text ~= line[textStart .. i];
+								block.Add(new TextRef(text[].idup()));
+								text.clear();
+								i = line.length;
+								textStart = i;
+							}
+							else
+							{
+								//Nothing to do
+							}
+						}
+					}
+					
+					if (textStart < i)
+					{
+						text ~= line[textStart .. i];
+						block.Add(new TextRef(text[].idup()));
+						text.clear();
+					}
+				}
+				
+				return defined;
+			}
+			
+			
+			string ParseSubtype(string posn, string line, Block block)
+			{
+				if (block is null)
+				{
+					Error(posn, "NULL block reference");
+					return line;
+				}
+				
+				Appender!(char[]) text;
+				
+				ulong i = 0;
+				ulong textStart = i;
+				for (; (i < line.length); i += 1)
+				{
+					if (line[i] == '(')
+					{
+						// Add Text line line[textStart .. i]
+						text ~= line[textStart .. i];
+						block.Add(new TextRef(text[].idup()));
+						text.clear();
+						
+						// Reference
+						i += 1;
+						ulong start = i;
+						
+						for (i = 0; (i < line.length-1); i += 1)
+						{
+							if (line[i] == ')')
+							{
+								IReference reference = ParseReference(posn, line[start .. i]);
+								if (reference !is null)
+								{
+									block.Add(reference);
+								}
+								textStart = i+1;
+								i += 1;
+								break;
+							}
+						}
+					}
+					else if (isWhite(line[i]))
+					{
+						block.Add(new TextRef(line[textStart .. i]));
+						text.clear();
+						return (i < line.length)?(line[i..$]):("");
+					}
+					else
+					{
+						// Nothing to do
+					}
+				}
+				
+				block.Add(new TextRef(line[textStart .. $]));
+				
+				return "";
+			}
+			
+			string ParseFileName(string posn, string line, Block block)
+			{
+				// Strip white space
+				ulong i = 0;
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if ((i < line.length) && (line[i] != '='))
+				{
+					// block
+					line = ParseSubtype(posn, line[i..$], block);
+					
+					// Strip white space
+					i = 0;
+					while ((i < line.length) && isWhite(line[i]))
+					{
+						i += 1;
+					}
+				}
+				else
+				{
+					// Missing file name
+					Error(posn, "Missing file name : ", line);
+				}
+				
+				return (i < line.length)?(line[i..$]):("");
+			}
+			
+			Block ParseBlock(string posn, string line)
+			{
+				string name;
+				string subtype;
+				Block  block;
+				
+				line  = ParseBlockName(posn, line, name, subtype);
+				block = AddBlock(posn, new Block(posn, name, subtype, null));
+				
+				bool defined = ParseBlockAssignment(posn, line, block);
+				
+				return (defined)?(null):(block);
+			}
+			
+			Block ParseFileBlock(string posn, string line)
+			{
+				string name;
+				string subtype;
+				Block  block;
+				Block  filename = new Block(posn, "", "", null);
+				
+				line  = ParseBlockName(posn, line, name, subtype);
+				line  = ParseFileName(posn, line, filename);
+				block = AddBlock(posn, new Block(posn, name, subtype, filename));
+				
+				bool defined = ParseBlockAssignment(posn, line, block);
+				
+				return (defined)?(null):(block);
+			}
+			
+			bool ParseInclude(string line, InputStack input)
+			{
+				return true;
+			}
+			
+			IReference ParseReference(string posn, string line)
+			{
+				IReference reference;
+				
+				ulong i = 0;
+				
+				//strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				// Get the name
+				ulong start = i;
+				while ((i < line.length) && IsBlockNameChar(line[i]))
+				{
+					i += 1;
+				}
+				string name = line[start .. i];
+				
+				if ((i < line.length) && (line[i] == ':'))
+				{
+					// Block reference
+					Block subtype = new Block(posn, "", "", null);
+					line = ParseSubtype(posn, line[i+1..$], subtype);
+					i = 0;
+					reference = new BlockRef(posn, name, subtype);
+				}
+				else if ((i >= line.length) || isWhite(line[i]))
+				{
+					switch (name)
+					{
+						default:
+							// Block reference
+							reference = new BlockRef(posn, name, null);
+							break;
+					}
+				}
+				else
+				{
+					// Error Illegal name
+				}
+				
+				//strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if (i < line.length)
+				{
+					// Error ilegal reference
+				}
+				
+				return reference;
+			}
+			
+			Block AddBlock(string posn, Block block)
+			{
+				// Check if it has a name
+				if (block.Name().length > 0)
+				{
+					//TODO Check for duplicates
+					if (FindBlock(posn, block.Name(), block.SubType()) is null)
+					{
+						writeln("Add block : ", block.Name(), "::", block.SubType(), "::", posn);
+						m_blocks ~= block;
+					}
+					else
+					{
+						Error(posn, "Duplicate block definition : ", block.Name(), ":", block.SubType());
+					}
+				}
+				return block;
+			}
+			
+			Block FindBlock(string posn, string name, string subtype)
+			{
+				foreach (block ; m_blocks)
+				{
+					if (block.Match(name, subtype))
+					{
+						return block;
+					}
+				}
+				
+				return null;
+			}
+			
+			Block[]     m_blocks;
+			OutputStack m_output;
+			DataStack   m_data;
+		}
+	}
+}
+
+private
+{
+			
+	bool IsBlockNameChar(char ch)
+	{
+		return (isAlpha(ch) && isUpper(ch)) ||
+				isNumber(ch) ||
+				(ch == '_') ||
+				(ch == '-');
+	}
+}

@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/codegen
+codegen.so
+codegen.dylib
+codegen.dll
+codegen.a
+codegen.lib
+codegen-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

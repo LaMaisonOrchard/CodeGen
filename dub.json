@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"David Orchard"
+	],
+	"copyright": "Copyright © 2025, David Orchard",
+	"description": "Template based code generator",
+	"license": "BSL-1.0",
+	"name": "codegen"
+}
