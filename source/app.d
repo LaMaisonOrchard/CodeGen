@@ -14,13 +14,17 @@ import Data;
 
 void main()
 {
-	writeln("Edit source/app.d to start your project.");
-	
 	auto tmpl = new Template.Template("test.tmpl");
 	
-	//auto output = new TextOutput();
-	auto output = new StdOutput();
-	tmpl.Generate(output, new Top());
+	if (tmpl.HasError())
+	{
+		writeln("Illegal template");
+	}
+	else
+	{
+		auto output = new StdOutput();
+		tmpl.Generate(output, new Top());
+	}
 }
 
 class Top : DefaultDataBlock
