@@ -21,8 +21,11 @@ public
 	{
 		this(string filename)
 		{
+			m_error = false;
 			Parse(new InputStack(filename));
 		}
+		
+		bool HasError() {return m_error;}
 		
 		void Generate(NullOutput output, IDataBlock context)
 		{
@@ -47,6 +50,7 @@ public
 		{
 			void Error(string[] params ...)
 			{
+				m_error = true;
 				write("Error : ");
 				foreach(arg ; params)
 				{
@@ -60,6 +64,7 @@ public
 				void Expand(OutputStack output);
 			}
 			
+			// A reference to a piece of litteral text
 			class TextRef : IReference
 			{
 				this(string text)
@@ -75,6 +80,7 @@ public
 				string m_text;
 			}
 			
+			// A base class common to other references providing common support routines.
 			abstract class BaseRef : IReference
 			{
 				this(string posn)
@@ -111,6 +117,7 @@ public
 				}
 			}
 			
+			// A direct reference to a block of text
 			class BlockRef : BaseRef
 			{
 				this(string posn, string name, Block subtype)
@@ -141,6 +148,7 @@ public
 				Block  m_subtype;
 			}
 			
+			// A reference to a block in the context of a sub-data item of the current data item
 			class UsingRef : BaseRef
 			{
 				this(string posn, string using, string name, Block subtype)
@@ -197,7 +205,7 @@ public
 				Block  m_subtype;
 			}
 			
-			
+			// A reference to a block in the context of multiple sub-data items of the current data item
 			class LoopRef : BaseRef
 			{
 				this(string posn, string using, Block sep, string name, Block subtype)
@@ -268,6 +276,7 @@ public
 				Block  m_subtype;
 			}
 			
+			// A block of text made up of references to litteral text or other blocks
 			final class Block
 			{
 				this (string posn)
@@ -961,6 +970,7 @@ public
 			Block[]     m_blocks;
 			OutputStack m_output;
 			DataStack   m_data;
+			bool        m_error;
 		}
 	}
 }

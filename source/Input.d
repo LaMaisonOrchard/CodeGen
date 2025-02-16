@@ -10,6 +10,7 @@ import std.container;
 import std.stdio;
 import std.uni;
 import std.format;
+import std.path;
 
 public
 {
@@ -17,7 +18,15 @@ public
 	{
 		this(string filename)
 		{
-			m_stack = SList!Input(Input(filename));
+			try
+			{
+				auto fullpath = absolutePath(filename);
+				m_stack = SList!Input(Input(fullpath, filename));
+			}
+			catch(Exception ex)
+			{
+				m_stack = SList!Input();
+			}
 		}
 		
 		string Posn()
@@ -50,8 +59,16 @@ public
 		
 		bool Push(string filename)
 		{
-			m_stack.insert(Input(filename));
-			return true;
+			try
+			{
+				auto fullpath = absolutePath(filename, m_stack.front().Path());
+				m_stack.insert(Input(fullpath, filename));
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
 		}
 		
 		void Pop()
@@ -72,14 +89,16 @@ private
 {
 	struct Input
 	{
-		this(string filename)
+		this(string fullPath, string filename)
 		{
 			m_name = filename;
+			m_path = dirName(fullPath);
 			m_line = 0;
-			m_file = File(filename, "r");
+			m_file = File(fullPath, "r");
 		}
 		
 		string Name() {return m_name;}
+		string Path() {return m_path;}
 		ulong  Line() {return m_line;}
 		
 		void Close()
@@ -100,6 +119,7 @@ private
 		
 		File   m_file;
 		string m_name;
+		string m_path;
 		ulong  m_line;
 	}
 }
