@@ -2,9 +2,12 @@
 !INC test2.tmpl
 
 !BLK ROOT
-Hello World  ![OUTPUT:file]!![NAME:me]!<<
+Hello World  ![NAME:me]!<<
 What are you doing
 to day.
+
+![LIST ENTRY (COMMA) FRED]!
+
 !END
 
 !FIL OUTPUT:file out.txt
@@ -12,3 +15,5 @@ A file
 !END
 
 !BLK NAME =David Orchard(![TYPE]!)
+
+!BLK FRED=![USING BILL LOIS]!

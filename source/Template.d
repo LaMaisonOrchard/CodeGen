@@ -10,6 +10,7 @@ import std.container;
 import std.stdio;
 import std.uni;
 import std.format;
+import std.typecons;
 import Input;
 import Output;
 import Data;
@@ -140,8 +141,143 @@ public
 				Block  m_subtype;
 			}
 			
+			class UsingRef : BaseRef
+			{
+				this(string posn, string using, string name, Block subtype)
+				{
+					super(posn);
+					m_using   = using;
+					m_name    = name;
+					m_subtype = subtype;
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					string subtype = "";
+					
+					if (m_subtype !is null)
+					{
+						auto text = new TextOutput();
+						auto stack  = new OutputStack(text);
+						m_subtype.Generate(stack);
+						subtype = text.Text();
+						stack.Close();
+					}
+					
+					if (m_using == "PREV")
+					{
+						IDataBlock data = this.outer.m_data.Pop();
+						
+						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+						ExpandBlock(output, block, m_name, subtype);
+						
+						if (data !is null)
+						{
+							this.outer.m_data.Push(data);
+						}						
+					}
+					else
+					{
+						IDataBlock data = this.outer.m_data.Using(m_using);
+						
+						if (data !is null)
+						{
+							this.outer.m_data.Push(data);
+						}
+						
+						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+						ExpandBlock(output, block, m_name, subtype);
+						
+						this.outer.m_data.Pop();
+					}
+				}
+				
+				string m_using;
+				string m_name;
+				Block  m_subtype;
+			}
+			
+			
+			class LoopRef : BaseRef
+			{
+				this(string posn, string using, Block sep, string name, Block subtype)
+				{
+					super(posn);
+					m_using   = using;
+					m_sep     = sep;
+					m_name    = name;
+					m_subtype = subtype;
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					string subtype = "";
+					string sep     = "";
+					
+					if (m_subtype !is null)
+					{
+						auto text = new TextOutput();
+						auto stack  = new OutputStack(text);
+						m_subtype.Generate(stack);
+						subtype = text.Text();
+						stack.Close();
+					}
+					
+					if (m_sep !is null)
+					{
+						auto text = new TextOutput();
+						auto stack  = new OutputStack(text);
+						m_sep.Generate(stack);
+						sep = text.Text();
+						stack.Close();
+					}
+					
+					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+					if (block !is null)
+					{
+						auto list = this.outer.m_data.List(m_using);
+						
+						if (list[0])
+						{
+							bool first = true;
+							foreach (data ; list[1])
+							{
+								this.outer.m_data.Push(data);
+							
+								if (!first)
+								{
+									output.Write(sep);
+								}
+								
+								ExpandBlock(output, block, m_name, subtype);
+								first = false;
+								
+								this.outer.m_data.Pop();
+							}
+						}
+						else
+						{
+							Error(Posn(), "Invalid list : ", m_using);
+						}
+					}
+				}
+				
+				string m_using;
+				string m_name;
+				Block  m_sep;
+				Block  m_subtype;
+			}
+			
 			final class Block
 			{
+				this (string posn)
+				{
+					m_posn     = posn;
+					m_name     = "";
+					m_subtype  = "";
+					m_filename = null;
+				}
+				
 				this (string posn, string name, string subtype, Block filename)
 				{
 					m_posn     = posn;
@@ -288,9 +424,9 @@ public
 							}
 							else if (line[0 .. 4] == "!INC")
 							{
-								write("Parse include : ", line);
 								if (ParseInclude(line[4..$], input))
 								{
+									// TODO
 								}
 								continue;
 							}
@@ -404,7 +540,7 @@ public
 					i += 1;
 					ulong textStart = i;
 					
-					for (; (i < line.length); i += 1)
+					while (i < line.length)
 					{
 						if (line[i] == '!')
 						{
@@ -431,23 +567,24 @@ public
 											block.Add(reference);
 										}
 										textStart = i+2;
-										i += 1;
+										i += 2;
 										break;
 									}
 								}
 							}
-							else if ((line[i] == '\r') || (line[i] == '\n'))
-							{
-								text ~= line[textStart .. i];
-								block.Add(new TextRef(text[].idup()));
-								text.clear();
-								i = line.length;
-								textStart = i;
-							}
-							else
-							{
-								//Nothing to do
-							}
+						}
+						else if ((line[i] == '\r') || (line[i] == '\n'))
+						{
+							text ~= line[textStart .. i];
+							block.Add(new TextRef(text[].idup()));
+							text.clear();
+							textStart = i;
+							break;
+						}
+						else
+						{
+							//Nothing to do
+							i += 1;
 						}
 					}
 					
@@ -488,7 +625,7 @@ public
 						i += 1;
 						ulong start = i;
 						
-						for (i = 0; (i < line.length-1); i += 1)
+						for (; (i < line.length-1); i += 1)
 						{
 							if (line[i] == ')')
 							{
@@ -498,7 +635,6 @@ public
 									block.Add(reference);
 								}
 								textStart = i+1;
-								i += 1;
 								break;
 							}
 						}
@@ -569,7 +705,7 @@ public
 				string name;
 				string subtype;
 				Block  block;
-				Block  filename = new Block(posn, "", "", null);
+				Block  filename = new Block(posn);
 				
 				line  = ParseBlockName(posn, line, name, subtype);
 				line  = ParseFileName(posn, line, filename);
@@ -655,30 +791,126 @@ public
 					i += 1;
 				}
 				string name = line[start .. i];
+				string item = "";
+				string op   = "";
+				Block  sep     = null;
+				Block  subtype = null;
+				
+				switch(name)
+				{
+					case "USING":
+					case "FOREACH":
+						op = name;
+						name = "";
+						//strip white space
+						while ((i < line.length) && isWhite(line[i]))
+						{
+							i += 1;
+						}
+						
+						// Get the item
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						item = line[start .. i];
+						
+						//strip white space
+						while ((i < line.length) && isWhite(line[i]))
+						{
+							i += 1;
+						}
+						
+						// Get the name
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						name = line[start .. i];
+						break;
+						
+					case "LIST":
+						op = name;
+						name = "";
+						//strip white space
+						while ((i < line.length) && isWhite(line[i]))
+						{
+							i += 1;
+						}
+						
+						// Get the item
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						item = line[start .. i];
+						
+						//strip white space
+						while ((i < line.length) && isWhite(line[i]))
+						{
+							i += 1;
+						}
+						
+						// Get the item
+						sep = new Block(posn);
+						line = ParseSubtype(posn, line[i..$], sep);
+						i = 0;
+						
+						//strip white space
+						while ((i < line.length) && isWhite(line[i]))
+						{
+							i += 1;
+						}
+						
+						// Get the name
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						name = line[start .. i];
+						break;
+						
+					default:
+						break;
+				}
 				
 				if ((i < line.length) && (line[i] == ':'))
 				{
 					// Block reference
-					Block subtype = new Block(posn, "", "", null);
+					subtype = new Block(posn);
 					line = ParseSubtype(posn, line[i+1..$], subtype);
 					i = 0;
-					reference = new BlockRef(posn, name, subtype);
 				}
 				else if ((i >= line.length) || isWhite(line[i]))
 				{
-					switch (name)
-					{
-						default:
-							// Block reference
-							reference = new BlockRef(posn, name, null);
-							break;
-					}
+					// Complete subtype
 				}
 				else
 				{
 					// Error Illegal name
-					Error(posn, "Illegal name : ", line[start..$]);
+					Error(posn, "Illegal block name : ", line[start..$]);
 					i = line.length;
+				}
+				
+				switch(op)
+				{
+					case "USING":
+						reference = new UsingRef(posn, item, name, subtype);
+						break;
+						
+					case "FOREACH":
+					case "LIST":
+						reference = new LoopRef(posn, item, sep, name, subtype);
+						break;
+						break;
+						
+					default:
+						reference = new BlockRef(posn, name, subtype);
+						break;
 				}
 				
 				//strip white space
@@ -701,10 +933,8 @@ public
 				// Check if it has a name
 				if (block.Name().length > 0)
 				{
-					//TODO Check for duplicates
 					if (FindBlock(posn, block.Name(), block.SubType()) is null)
 					{
-						writeln("Add block : ", block.Name(), "::", block.SubType(), "::", posn);
 						m_blocks ~= block;
 					}
 					else

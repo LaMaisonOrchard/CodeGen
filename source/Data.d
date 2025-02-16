@@ -8,6 +8,7 @@
 import std.array;
 import std.container;
 import std.stdio;
+import std.typecons;
 import Output;
 
 public
@@ -20,18 +21,31 @@ public
 		// Position of this in the input file
 		string Posn();
 		
+		// Get a sub-item of this data item
+		IDataBlock Using(string item);
+		
+		// Get a sub-item of this data item
+		Tuple!(bool, DList!IDataBlock) List(string item);
+		
 		// Expand the block as defined by the data object
 		bool DoBlock(BaseOutput output, string name, string subtype);
 	}
 	
 	class DefaultDataBlock : IDataBlock
 	{
-		this(string posn)
+		final this(string posn)
 		{
+			m_type = "DEFAULT";
 			m_posn = posn;
 		}
 		
-		override string Type() {return "DEFAULT";}
+		this(string posn, string type)
+		{
+			m_type = type;
+			m_posn = posn;
+		}
+		
+		final string Type() {return m_type;}
 		
 		override string Posn()
 		{
@@ -54,9 +68,22 @@ public
 			return true;
 		}
 		
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+			return null;
+		}
+		
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(string item)
+		{
+			return tuple(false, DList!IDataBlock());
+		}
+		
 		private
 		{
 			string m_posn;
+			string m_type;
 		}
 	}
 	
@@ -112,17 +139,50 @@ public
 			}
 		}
 		
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+			if (!m_stack.empty())
+			{
+				return m_stack.front().Using(item);
+			}
+			else
+			{
+				// No such block
+				return null;
+			}
+		}
+		
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(string item)
+		{
+			if (!m_stack.empty())
+			{
+				return m_stack.front().List(item);
+			}
+			else
+			{
+				// No such block
+				return tuple(false, DList!IDataBlock());
+			}
+		}
+		
 		void Push(IDataBlock data)
 		{
 			m_stack.insert(data);
 		}
 		
-		void Pop()
+		IDataBlock Pop()
 		{
+			IDataBlock data;
+			
 			if (!m_stack.empty())
 			{
+				data = m_stack.front();
 				m_stack.removeFront();
 			}
+			
+			return data;
 		}
 		
 		private
