@@ -9,6 +9,7 @@ import std.array;
 import std.uni;
 import std.stdio;
 import std.typecons;
+import std.format;
 import Output;
 
 public
@@ -48,6 +49,16 @@ public
 				
 			default:
 				return text;
+		}
+	}
+	
+	// Format the text according to the subtype
+	string FormatValue(long value, string subtype)
+	{
+		switch(subtype)
+		{
+			default:
+				return format("%d", value);
 		}
 	}
 	

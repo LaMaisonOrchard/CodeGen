@@ -15,6 +15,7 @@ import std.datetime;
 import Input;
 import Output;
 import Data;
+import Utilities;
 
 public
 {	
@@ -298,30 +299,28 @@ public
 			}
 			
 			// A block of text made up of references to litteral text or other blocks
-			final class Block
+			class Block
 			{
 				this (string posn)
 				{
 					m_posn     = posn;
 					m_name     = "";
 					m_subtype  = "";
-					m_filename = null;
 				}
 				
-				this (string posn, string name, string subtype, Block filename)
+				this (string posn, string name, string subtype)
 				{
 					m_posn     = posn;
 					m_name     = name;
 					m_subtype  = subtype;
-					m_filename = filename;
 				}
 				
-				void Add(IReference data)
+				final void Add(IReference data)
 				{
 					m_blocks ~= data;
 				}
 				
-				string Ref()
+				final string Ref()
 				{
 					if ((m_subtype is null) || (m_subtype.length == 0))
 					{
@@ -333,17 +332,42 @@ public
 					}
 				}
 				
-				string Posn()    {return m_posn;}
-				string Name()    {return m_name;}
-				string SubType() {return m_subtype;}
+				final string Posn()    {return m_posn;}
+				final string Name()    {return m_name;}
+				final string SubType() {return m_subtype;}
 				
-				bool Match(string name, string subtype)
+				final bool Match(string name, string subtype)
 				{
 					return (m_name == name) &&
 						   ((m_subtype is null) || (m_subtype == "") || (m_subtype == subtype));
 				}
 				
 				void Generate(OutputStack output)
+				{
+				}
+				
+				string       m_name;
+				string       m_subtype;
+				string       m_posn;
+				IReference[] m_blocks;
+			}
+		
+			// A block of text made up of references to litteral text or other blocks
+			final class TextBlock : Block
+			{
+				this (string posn)
+				{
+					super(posn);
+					m_filename = null;
+				}
+				
+				this (string posn, string name, string subtype, Block filename)
+				{
+					super(posn, name, subtype);
+					m_filename = filename;
+				}
+				
+				override void Generate(OutputStack output)
 				{
 					if (m_filename !is null)
 					{
@@ -376,13 +400,45 @@ public
 					}
 				}
 				
-				string       m_name;
-				string       m_subtype;
-				string       m_posn;
-				Block        m_filename;
-				IReference[] m_blocks;
+				Block m_filename;
 			}
 		
+			// A block of text made up of references to litteral text or other blocks
+			final class EvalBlock : Block
+			{
+				this (string posn)
+				{
+					super(posn);
+				}
+				
+				this (string posn, string name, string subtype)
+				{
+					super(posn, name, subtype);
+				}
+				
+				override void Generate(OutputStack output)
+				{
+					auto text_output = new TextOutput();
+					auto stack       = new OutputStack(text_output);
+					
+					foreach (reference; m_blocks)
+					{
+						reference.Expand(stack);
+					}
+					
+					try
+					{
+						auto value = Evaluate(text_output.Text());
+						output.Write(FormatValue(value, m_subtype));
+					}
+					catch (EvalException ex)
+					{
+						//this.outer.Error(Posn(), ex.message().idup);
+						output.Write("NaN");
+					}
+				}
+			}
+			
 			void Parse(InputStack input)
 			{
 				Appender!(char[]) text;
@@ -454,6 +510,12 @@ public
 							if (line[0 .. 4] == "!BLK")
 							{
 								block = ParseBlock(input.Posn(), line[4..$]);
+								text.clear();
+								continue;
+							}
+							else if (line[0 .. 5] == "!EVAL")
+							{
+								block = ParseEvalBlock(input.Posn(), line[5..$]);
 								text.clear();
 								continue;
 							}
@@ -734,7 +796,21 @@ public
 				Block  block;
 				
 				line  = ParseBlockName(posn, line, name, subtype);
-				block = AddBlock(posn, new Block(posn, name, subtype, null));
+				block = AddBlock(posn, new TextBlock(posn, name, subtype, null));
+				
+				bool defined = ParseBlockAssignment(posn, line, block);
+				
+				return (defined)?(null):(block);
+			}
+			
+			Block ParseEvalBlock(string posn, string line)
+			{
+				string name;
+				string subtype;
+				Block  block;
+				
+				line  = ParseBlockName(posn, line, name, subtype);
+				block = AddBlock(posn, new EvalBlock(posn, name, subtype));
 				
 				bool defined = ParseBlockAssignment(posn, line, block);
 				
@@ -750,7 +826,7 @@ public
 				
 				line  = ParseBlockName(posn, line, name, subtype);
 				line  = ParseFileName(posn, line, filename);
-				block = AddBlock(posn, new Block(posn, name, subtype, filename));
+				block = AddBlock(posn, new TextBlock(posn, name, subtype, filename));
 				
 				bool defined = ParseBlockAssignment(posn, line, block);
 				
