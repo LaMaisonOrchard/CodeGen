@@ -329,7 +329,18 @@ public
 						auto text_output = new TextOutput();
 						auto stack       = new OutputStack(text_output);
 						m_filename.Generate(stack);
-						output.Push(new FileOutput(text_output.Text()));
+						if (text_output.Text() == "null")
+						{
+							output.Push(new NullOutput());
+						}
+						else if (text_output.Text() == "stdout")
+						{
+							output.Push(new StdOutput());
+						}
+						else
+						{
+							output.Push(new FileOutput(text_output.Text()));
+						}
 						stack.Close();
 					}
 					

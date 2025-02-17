@@ -10,6 +10,7 @@ import std.container;
 import std.stdio;
 import std.typecons;
 import Output;
+import Utilities;
 
 public
 {
@@ -57,7 +58,7 @@ public
 			switch (name)
 			{
 				case "TYPE":
-					output.Write(Type());
+					output.Write(FormatName(Type(), subtype));
 					break;
 					
 				default:

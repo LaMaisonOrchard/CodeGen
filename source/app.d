@@ -11,6 +11,7 @@ import std.typecons;
 import Template;
 import Output;
 import Data;
+import Utilities;
 
 void main()
 {
@@ -91,7 +92,7 @@ class Bill : DefaultDataBlock
 		switch (name)
 		{
 			case "LOIS":
-				output.Write("Hello ", Type());
+				output.Write(FormatName("Hello "~Type(), subtype));
 				break;
 				
 			default:
