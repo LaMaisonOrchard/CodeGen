@@ -11,6 +11,7 @@ import std.stdio;
 import std.uni;
 import std.format;
 import std.typecons;
+import std.datetime;
 import Input;
 import Output;
 import Data;
@@ -104,10 +105,30 @@ public
 					{
 						// Block is handled by the data item
 					}
+					else if (BuiltIn(output, name, subtype))
+					{
+						// Block is handled by the built in blocks
+					}
 					else
 					{
 						// No such block
 						Error(m_posn, "No such block ", name,":",subtype);
+					}
+				}
+				
+				bool BuiltIn(OutputStack output, string name, string subtype)
+				{
+					switch(name)
+					{
+						case "YEAR":
+						{
+							auto now = Clock.currTime();
+							output.Write(format("%d", now.year()));
+							return true;
+						}
+						
+						default:
+							return false;
 					}
 				}
 				
