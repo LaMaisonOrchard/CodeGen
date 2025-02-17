@@ -161,7 +161,7 @@ private
 		ulong i = 0;
 		while ((i < text.length) && isWhite(text[i])) {i += 1;}
 		
-		if ((i < text.length-1) && (text[i] == '('))
+		if (((i+1) < text.length) && (text[i] == '('))
 		{
 			i += 1;
 			text = text[i..$];
@@ -651,6 +651,24 @@ private
 	{
 		string text = "(8*3/4)";
 		assert(Evaluate(text) == 8*3/4);
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = "";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
 	}
 	
 	unittest

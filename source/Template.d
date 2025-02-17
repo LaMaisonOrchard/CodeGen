@@ -82,6 +82,70 @@ public
 				string m_text;
 			}
 			
+			class ColumnRef : IReference
+			{
+				this(string posn, Block column)
+				{
+					m_posn   = posn;
+					m_column = column;
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					auto text  = new TextOutput();
+					auto stack = new OutputStack(text);
+					m_column.Generate(stack);
+					auto eval = text.Text();
+					stack.Close();
+					
+					try
+					{
+						auto value = Evaluate(eval);
+						while (value > output.Column()) {output.Write(" ");}
+					}
+					catch (EvalException ex)
+					{
+						this.outer.Error(m_posn, ex.message().idup);
+						output.Write("NaN");
+					}
+				}
+				
+				string m_posn;
+				Block  m_column;
+			}
+			
+			class TabRef : IReference
+			{
+				this(string posn, Block tab)
+				{
+					m_posn = posn;
+					m_tab  = tab;
+				}
+				
+				override void Expand(OutputStack output)
+				{
+					auto text  = new TextOutput();
+					auto stack = new OutputStack(text);
+					m_tab.Generate(stack);
+					auto eval = text.Text();
+					stack.Close();
+					
+					try
+					{
+						auto value = Evaluate(eval);
+						while ((output.Column()%value) != 0) {output.Write(" ");}
+					}
+					catch (EvalException ex)
+					{
+						this.outer.Error(m_posn, ex.message().idup);
+						output.Write("NaN");
+					}
+				}
+				
+				string m_posn;
+				Block  m_tab;
+			}
+			
 			// A base class common to other references providing common support routines.
 			abstract class BaseRef : IReference
 			{
@@ -230,9 +294,10 @@ public
 			// A reference to a block in the context of multiple sub-data items of the current data item
 			class LoopRef : BaseRef
 			{
-				this(string posn, string using, Block sep, string name, Block subtype)
+				this(string posn, bool leaf, string using, Block sep, string name, Block subtype)
 				{
 					super(posn);
+					m_leaf    = leaf;
 					m_using   = using;
 					m_sep     = sep;
 					m_name    = name;
@@ -265,7 +330,7 @@ public
 					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
 					if (block !is null)
 					{
-						auto list = this.outer.m_data.List(m_using);
+						auto list = this.outer.m_data.List(m_leaf, m_using);
 						
 						if (list[0])
 						{
@@ -292,6 +357,7 @@ public
 					}
 				}
 				
+				bool   m_leaf;
 				string m_using;
 				string m_name;
 				Block  m_sep;
@@ -426,9 +492,12 @@ public
 						reference.Expand(stack);
 					}
 					
+					auto text = text_output.Text;
+					stack.Close();
+					
 					try
 					{
-						auto value = Evaluate(text_output.Text());
+						auto value = Evaluate(text);
 						output.Write(FormatValue(value, m_subtype));
 					}
 					catch (EvalException ex)
@@ -912,18 +981,36 @@ public
 				string op   = "";
 				Block  sep     = null;
 				Block  subtype = null;
+				bool   leaf    = false;
 				
 				switch(name)
 				{
+					case "COL":
+						//strip white space
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
+						
+						// Get the item
+						auto column = new TextBlock(posn);
+						line = (i < line.length)?(line[i..$]):("");
+						line = ParseSubtype(posn, line, column);
+						return new ColumnRef(posn, column);
+						
+					case "TAB":
+						//strip white space
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
+						
+						// Get the item
+						auto tab = new TextBlock(posn);
+						line = (i < line.length)?(line[i..$]):("");
+						line = ParseSubtype(posn, line, tab);
+						return new TabRef(posn, tab);
+						
 					case "USING":
 					case "FOREACH":
 						op = name;
 						name = "";
 						//strip white space
-						while ((i < line.length) && isWhite(line[i]))
-						{
-							i += 1;
-						}
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
 						
 						// Get the item
 						start = i;
@@ -931,13 +1018,26 @@ public
 						{
 							i += 1;
 						}
-						item = line[start .. i];
+						item = (start < i)?(line[start .. i]):("");
+						
+						if (item == "LEAF")
+						{
+							leaf = true;
+							
+							//strip white space
+							while ((i < line.length) && isWhite(line[i])) {i += 1;}
+							
+							// Get the item
+							start = i;
+							while ((i < line.length) && IsBlockNameChar(line[i]))
+							{
+								i += 1;
+							}
+							item = (start < i)?(line[start .. i]):("");
+						}
 						
 						//strip white space
-						while ((i < line.length) && isWhite(line[i]))
-						{
-							i += 1;
-						}
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
 						
 						// Get the name
 						start = i;
@@ -945,17 +1045,14 @@ public
 						{
 							i += 1;
 						}
-						name = line[start .. i];
+						name = (start < i)?(line[start .. i]):("");
 						break;
 						
 					case "LIST":
 						op = name;
 						name = "";
 						//strip white space
-						while ((i < line.length) && isWhite(line[i]))
-						{
-							i += 1;
-						}
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
 						
 						// Get the item
 						start = i;
@@ -963,24 +1060,18 @@ public
 						{
 							i += 1;
 						}
-						item = line[start .. i];
+						item = (start < i)?(line[start .. i]):("");
 						
 						//strip white space
-						while ((i < line.length) && isWhite(line[i]))
-						{
-							i += 1;
-						}
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
 						
 						// Get the item
-						sep = new Block(posn);
+						sep = new TextBlock(posn);
 						line = ParseSubtype(posn, line[i..$], sep);
 						i = 0;
 						
 						//strip white space
-						while ((i < line.length) && isWhite(line[i]))
-						{
-							i += 1;
-						}
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
 						
 						// Get the name
 						start = i;
@@ -988,7 +1079,7 @@ public
 						{
 							i += 1;
 						}
-						name = line[start .. i];
+						name = (start < i)?(line[start .. i]):("");
 						break;
 						
 					default:
@@ -998,8 +1089,9 @@ public
 				if ((i < line.length) && (line[i] == ':'))
 				{
 					// Block reference
-					subtype = new Block(posn);
-					line = ParseSubtype(posn, line[i+1..$], subtype);
+					subtype = new TextBlock(posn);
+					line = ((i+1) < line.length)?(line[i+1..$]):("");
+					line = ParseSubtype(posn, line, subtype);
 					i = 0;
 				}
 				else if ((i >= line.length) || isWhite(line[i]))
@@ -1021,7 +1113,7 @@ public
 						
 					case "FOREACH":
 					case "LIST":
-						reference = new LoopRef(posn, item, sep, name, subtype);
+						reference = new LoopRef(posn, leaf, item, sep, name, subtype);
 						break;
 						break;
 						

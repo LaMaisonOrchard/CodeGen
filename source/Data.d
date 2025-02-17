@@ -26,7 +26,7 @@ public
 		IDataBlock Using(string item);
 		
 		// Get a sub-item of this data item
-		Tuple!(bool, DList!IDataBlock) List(string item);
+		Tuple!(bool, DList!IDataBlock) List(bool leaf, string item);
 		
 		// Expand the block as defined by the data object
 		bool DoBlock(BaseOutput output, string name, string subtype);
@@ -76,7 +76,7 @@ public
 		}
 		
 		// Get a sub-item of this data item
-		override Tuple!(bool, DList!IDataBlock) List(string item)
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 		{
 			return tuple(false, DList!IDataBlock());
 		}
@@ -155,11 +155,11 @@ public
 		}
 		
 		// Get a sub-item of this data item
-		override Tuple!(bool, DList!IDataBlock) List(string item)
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().List(item);
+				return m_stack.front().List(leaf, item);
 			}
 			else
 			{

@@ -39,7 +39,7 @@ class Top : DefaultDataBlock
 	}
 	
 	// Get a sub-item of this data item
-	override Tuple!(bool, DList!IDataBlock) List(string item)
+	override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 	{
 		if (item == "ENTRY")
 		{
