@@ -18,15 +18,8 @@ public
 	{
 		this(string filename)
 		{
-			try
-			{
-				auto fullpath = absolutePath(filename);
-				m_stack = SList!Input(Input(fullpath, filename));
-			}
-			catch(Exception ex)
-			{
-				m_stack = SList!Input();
-			}
+			auto fullpath = absolutePath(filename);
+			m_stack = SList!Input(Input(fullpath, filename));
 		}
 		
 		string Posn()

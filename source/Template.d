@@ -23,8 +23,15 @@ public
 	{
 		this(string filename)
 		{
-			m_error = false;
-			Parse(new InputStack(filename));
+			try
+			{
+				m_error = false;
+				Parse(new InputStack(filename));
+			}
+			catch (Exception ex)
+			{
+				Error("[<root>]", ex.message().idup);
+			}
 		}
 		
 		bool HasError() {return m_error;}
