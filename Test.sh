@@ -1,0 +1,1 @@
+dub -- -tmpl test.tmpl test.proto
