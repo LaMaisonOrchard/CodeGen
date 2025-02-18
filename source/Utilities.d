@@ -89,6 +89,10 @@ public
 		return v1.Value;
 	}
 	
+	void FileMerge(string from, string to)
+	{
+		// TODO Implement file merge
+	}
 }
 
 private

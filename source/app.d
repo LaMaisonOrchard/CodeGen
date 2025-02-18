@@ -23,8 +23,7 @@ void main()
 	}
 	else
 	{
-		auto output = new StdOutput();
-		tmpl.Generate(output, new Top());
+		tmpl.Generate("stdout", new Top(), ".", ".");
 	}
 }
 

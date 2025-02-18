@@ -9,6 +9,9 @@ import std.array;
 import std.container;
 import std.stdio;
 import std.uni;
+import std.file;
+import std.path;
+import Utilities;
 
 public
 {
@@ -49,6 +52,10 @@ public
 					}
 				}
 			}
+		}
+		
+		void Merge(string dest)
+		{
 		}
 		
 		int Column()
@@ -105,9 +112,15 @@ public
 	
 	class FileOutput : BaseOutput
 	{
-		this(string filename)
+		this(string dir, string filename)
 		{
-			m_fp = File(filename, "wb"); 
+			m_dir = dir;
+			m_filename = filename;
+			
+			auto fullpath = absolutePath(filename, absolutePath(dir));
+			auto path     = dirName(fullpath);
+			mkdirRecurse(path);
+			m_fp = File(fullpath, "wb"); 
 		}
 		
 		override void Write(string[] params ...)
@@ -120,6 +133,15 @@ public
 			}
 		}
 		
+		override void Merge(string dest)
+		{
+			auto from = absolutePath(m_filename, absolutePath(m_dir));
+			auto to   = absolutePath(m_filename, absolutePath(dest));
+			auto path = dirName(to);
+			mkdirRecurse(path);
+			FileMerge(from, to);
+		}
+		
 		override void Close()
 		{
 			BaseOutput.Close();
@@ -128,7 +150,9 @@ public
 			
 		private
 		{
-			File m_fp;
+			File   m_fp;
+			string m_dir;
+			string m_filename;
 		}
 	}
 	
@@ -153,7 +177,17 @@ public
 	{
 		this(BaseOutput output)
 		{
+			m_dir = ".";
+			m_copy = ".";
 			m_stack = SList!BaseOutput(output);
+		}
+		
+		this(string name, string dir, string copy)
+		{
+			m_dir = dir;
+			m_copy = copy;
+			m_stack = SList!BaseOutput();
+			Push(name);
 		}
 		
 		override void Write(string[] params ...)
@@ -178,11 +212,24 @@ public
 			return m_stack.front().Column();
 		}
 		
-		void Push(BaseOutput output)
-		{
+		void Push(string name)
+		{		
 			if (IsOpen())
 			{
-				m_stack.insert(output);
+				assert (name.length != 0);
+				
+				if (name == "null")
+				{
+					m_stack.insert(new NullOutput());
+				}
+				else if (name == "stdout")
+				{
+					m_stack.insert(new StdOutput());
+				}
+				else
+				{
+					m_stack.insert(new FileOutput(m_dir, name));
+				}
 			}
 		}
 		
@@ -191,10 +238,19 @@ public
 			if (!m_stack.empty())
 			{
 				m_stack.front().Close();
+				
+				if (m_dir != m_copy)
+				{
+					// Merge the files
+					m_stack.front().Merge(m_copy);
+				}
+				
 				m_stack.removeFront();
 			}
 		}
 		
+		string m_dir;
+		string m_copy;
 		SList!BaseOutput m_stack;
 	}
 	

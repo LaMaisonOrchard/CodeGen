@@ -19,7 +19,7 @@ import Utilities;
 
 public
 {	
-	class Template
+	final class Template
 	{
 		this(string filename)
 		{
@@ -29,9 +29,9 @@ public
 		
 		bool HasError() {return m_error;}
 		
-		void Generate(NullOutput output, IDataBlock context)
+		void Generate(string name, IDataBlock context, string dir, string copy)
 		{
-			m_output = new OutputStack(output);
+			m_output = new OutputStack(name, dir, copy);
 			m_data   = new DataStack(context);
 			
 			auto block = FindBlock("<ROOT>", "ROOT", "");
@@ -440,18 +440,7 @@ public
 						auto text_output = new TextOutput();
 						auto stack       = new OutputStack(text_output);
 						m_filename.Generate(stack);
-						if (text_output.Text() == "null")
-						{
-							output.Push(new NullOutput());
-						}
-						else if (text_output.Text() == "stdout")
-						{
-							output.Push(new StdOutput());
-						}
-						else
-						{
-							output.Push(new FileOutput(text_output.Text()));
-						}
+						output.Push(text_output.Text());
 						stack.Close();
 					}
 					
@@ -840,6 +829,7 @@ public
 				if ((i < line.length) && (line[i] != '='))
 				{
 					// block
+					
 					line = ParseSubtype(posn, line[i..$], block);
 					
 					// Strip white space
@@ -891,7 +881,7 @@ public
 				string name;
 				string subtype;
 				Block  block;
-				Block  filename = new Block(posn);
+				Block  filename = new TextBlock(posn);
 				
 				line  = ParseBlockName(posn, line, name, subtype);
 				line  = ParseFileName(posn, line, filename);
@@ -1061,6 +1051,22 @@ public
 							i += 1;
 						}
 						item = (start < i)?(line[start .. i]):("");
+						
+						if (item == "LEAF")
+						{
+							leaf = true;
+							
+							//strip white space
+							while ((i < line.length) && isWhite(line[i])) {i += 1;}
+							
+							// Get the item
+							start = i;
+							while ((i < line.length) && IsBlockNameChar(line[i]))
+							{
+								i += 1;
+							}
+							item = (start < i)?(line[start .. i]):("");
+						}
 						
 						//strip white space
 						while ((i < line.length) && isWhite(line[i])) {i += 1;}
