@@ -44,7 +44,7 @@ public
 			auto block = FindBlock("<ROOT>", "ROOT", "");
 			if (block !is null)
 			{
-				block.Generate(m_output);
+				block.Generate(m_output, "");
 			}
 			else
 			{
@@ -70,7 +70,7 @@ public
 			
 			interface IReference
 			{
-				void Expand(OutputStack output);
+				void Expand(OutputStack output, string callSubtype);
 			}
 			
 			// A reference to a piece of litteral text
@@ -81,7 +81,7 @@ public
 					m_text = text;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					output.Write(m_text);
 				}
@@ -97,11 +97,11 @@ public
 					m_column = column;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
-					m_column.Generate(stack);
+					m_column.Generate(stack, "");
 					auto eval = text.Text();
 					stack.Close();
 					
@@ -129,11 +129,11 @@ public
 					m_tab  = tab;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
-					m_tab.Generate(stack);
+					m_tab.Generate(stack, "");
 					auto eval = text.Text();
 					stack.Close();
 					
@@ -163,11 +163,11 @@ public
 				
 				final string Posn() { return m_posn;}
 				
-				final void ExpandBlock(OutputStack output, Block block, string name, string subtype)
+				final void ExpandBlock(OutputStack output, Block block, string name, string subtype, string callSubtype)
 				{
 					if (block !is null)
 					{
-						block.Generate(output);
+						block.Generate(output, subtype);
 					}
 					else if ((name == "CONFIG") && this.outer.m_data.Root().DoBlock(output, name, subtype))
 					{
@@ -180,6 +180,10 @@ public
 					else if (BuiltIn(output, name, subtype))
 					{
 						// Block is handled by the built in blocks
+					}
+					else if (name == "SUBTYPE")
+					{
+						output.Write(FormatName(callSubtype, subtype));
 					}
 					else
 					{
@@ -220,7 +224,7 @@ public
 					m_subtype = subtype;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					string subtype = "";
 					
@@ -228,13 +232,13 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack);
+						m_subtype.Generate(stack, subtype);
 						subtype = text.Text();
 						stack.Close();
 					}
 					
 					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-					ExpandBlock(output, block, m_name, subtype);
+					ExpandBlock(output, block, m_name, subtype, callSubtype);
 				}
 				
 				string m_name;
@@ -252,7 +256,7 @@ public
 					m_subtype = subtype;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					string subtype = "";
 					
@@ -260,7 +264,7 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack);
+						m_subtype.Generate(stack, subtype);
 						subtype = text.Text();
 						stack.Close();
 					}
@@ -270,7 +274,7 @@ public
 						IDataBlock data = this.outer.m_data.Pop();
 						
 						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-						ExpandBlock(output, block, m_name, subtype);
+						ExpandBlock(output, block, m_name, subtype, callSubtype);
 						
 						if (data !is null)
 						{
@@ -287,7 +291,7 @@ public
 						}
 						
 						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-						ExpandBlock(output, block, m_name, subtype);
+						ExpandBlock(output, block, m_name, subtype, callSubtype);
 						
 						this.outer.m_data.Pop();
 					}
@@ -311,7 +315,7 @@ public
 					m_subtype = subtype;
 				}
 				
-				override void Expand(OutputStack output)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					string subtype = "";
 					string sep     = "";
@@ -320,7 +324,7 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack);
+						m_subtype.Generate(stack, subtype);
 						subtype = text.Text();
 						stack.Close();
 					}
@@ -329,7 +333,7 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_sep.Generate(stack);
+						m_sep.Generate(stack, subtype);
 						sep = text.Text();
 						stack.Close();
 					}
@@ -351,7 +355,7 @@ public
 									output.Write(sep);
 								}
 								
-								ExpandBlock(output, block, m_name, subtype);
+								ExpandBlock(output, block, m_name, subtype, callSubtype);
 								first = false;
 								
 								this.outer.m_data.Pop();
@@ -415,7 +419,12 @@ public
 						   ((m_subtype is null) || (m_subtype == "") || (m_subtype == subtype));
 				}
 				
-				void Generate(OutputStack output)
+				final void Generate(OutputStack output)
+				{
+					Generate(output, "");
+				}
+				
+				void Generate(OutputStack output, string callSubtype)
 				{
 				}
 				
@@ -440,7 +449,7 @@ public
 					m_filename = filename;
 				}
 				
-				override void Generate(OutputStack output)
+				override void Generate(OutputStack output, string callSubtype)
 				{
 					if (m_filename !is null)
 					{
@@ -453,7 +462,7 @@ public
 					
 					foreach (reference; m_blocks)
 					{
-						reference.Expand(output);
+						reference.Expand(output, callSubtype);
 					}
 					
 					if (m_filename !is null)
@@ -478,14 +487,14 @@ public
 					super(posn, name, subtype);
 				}
 				
-				override void Generate(OutputStack output)
+				override void Generate(OutputStack output, string callSubtype)
 				{
 					auto text_output = new TextOutput();
 					auto stack       = new OutputStack(text_output);
 					
 					foreach (reference; m_blocks)
 					{
-						reference.Expand(stack);
+						reference.Expand(stack, callSubtype);
 					}
 					
 					auto text = text_output.Text;

@@ -10,6 +10,7 @@ import std.uni;
 import std.stdio;
 import std.typecons;
 import std.format;
+import std.file;
 import Output;
 
 public
@@ -91,7 +92,17 @@ public
 	
 	void FileMerge(string from, string to)
 	{
-		// TODO Implement file merge
+		if (exists(to))
+		{
+			string[string] userSections;
+			ReadSections(from, userSections);    // Theses are the default section from the source 
+			ReadSections(to, userSections);      // Override with the actual user sections
+			Copy(from, to, userSections);
+		}
+		else
+		{
+			copy(from, to);
+		}
 	}
 }
 
@@ -534,6 +545,18 @@ private
 		return text[].idup;
 	}
 	
+	
+	string[string] userSections;
+	void ReadSections(string file, string[string] sections)
+	{
+	}
+	
+	void Copy(string from, string to, string[string] sections)
+	{
+		// TODO Implement file merge
+		copy(from, to);
+	}
+			
 	unittest
 	{
 		string text = " 0 A";

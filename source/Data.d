@@ -17,7 +17,7 @@ public
 	interface IDataBlock
 	{
 		// A string to identify this type of data object
-		string Type();
+		string Class();
 		
 		// Position of this in the input file
 		string Posn();
@@ -30,6 +30,8 @@ public
 		
 		// Expand the block as defined by the data object
 		bool DoBlock(BaseOutput output, string name, string subtype);
+		
+		void Dump(BaseOutput file);
 	}
 	
 	class DefaultDataBlock : IDataBlock
@@ -46,7 +48,7 @@ public
 			m_posn = posn;
 		}
 		
-		final string Type() {return m_type;}
+		final string Class() {return m_type;}
 		
 		override string Posn()
 		{
@@ -57,8 +59,8 @@ public
 		{
 			switch (name)
 			{
-				case "TYPE":
-					output.Write(FormatName(Type(), subtype));
+				case "CLASS":
+					output.Write(FormatName(Class(), subtype));
 					break;
 					
 				default:
@@ -79,6 +81,11 @@ public
 		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 		{
 			return tuple(false, DList!IDataBlock());
+		}
+		
+		override void Dump(BaseOutput file)
+		{
+			file.Write("Dump not supported\n");
 		}
 		
 		private
@@ -102,11 +109,11 @@ public
 			return m_root;
 		}
 		
-		string Type()
+		string Class()
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().Type();
+				return m_stack.front().Class();
 			}
 			else
 			{
@@ -184,6 +191,14 @@ public
 			}
 			
 			return data;
+		}
+		
+		override void Dump(BaseOutput file)
+		{
+			if (!m_stack.empty())
+			{
+				m_stack.front().Dump(file);
+			}
 		}
 		
 		private

@@ -1,1 +1,1 @@
-dub -- -tmpl test.tmpl test.proto
+dub -- -tmpl test.tmpl test.ptree

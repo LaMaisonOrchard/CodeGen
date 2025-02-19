@@ -1,0 +1,34 @@
+////////////////////////////////////////////////////////////////
+//
+// This file describes and demonstrates the template syntax
+//
+// A template consists of a number of named text blocks. The 
+// root or starting point for the template is the ROOT block.
+// One block can insert the contents of another block by
+// referencing it by name.
+
+!BLK ROOT
+The output starts here
+
+This is the next block ![NEXT]!
+!END
+
+// The blocks have a short form as well which does not include
+// the end of line
+
+!BLK NEXT = <NEXT>
+
+// A block name can have a subtype. The block with no subtype
+// matches any sub type. It is a type of default or catch all
+// block.
+
+!BLK SUBTYPE_BLOCK
+![NAME1:fred]! = FRED
+![NAME1:bill]! = BILL
+![NAME1:harry]! = ANOTHER
+![NAME1:lois]! = ANOTHER
+!END
+
+!BLK NAME1:fred = FRED
+!BLK NAME1:bill = BILL
+!BLK NAME1      = ANOTHER
