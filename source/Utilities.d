@@ -11,6 +11,7 @@ import std.stdio;
 import std.typecons;
 import std.format;
 import std.file;
+import Input;
 import Output;
 
 public
@@ -106,7 +107,7 @@ public
 	}
 }
 
-private
+private  // Evaluate
 {
 	interface IValue
 	{
@@ -311,7 +312,223 @@ private
 		
 		return v1;
 	}
+		
+	unittest
+	{
+		string text = " 0 A";
+		assert(EvaluateValue(text).Value == 0);
+		assert(text == "A");
+	}
 	
+	unittest
+	{
+		string text = " 00 A";
+		assert(EvaluateValue(text).Value == 0);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = " -0 A";
+		assert(EvaluateValue(text).Value == 0);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = " -00 A";
+		assert(EvaluateValue(text).Value == 0);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = " 0123456789 A";
+		assert(EvaluateValue(text).Value == 123456789);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = " -0123456789 A";
+		assert(EvaluateValue(text).Value == -123456789);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = " 01234.56789 A";
+		assert(EvaluateValue(text).Value == 1234);
+		assert(text == ".56789 A");
+	}
+	
+	unittest
+	{
+		string text = " -01234.56789 A";
+		assert(EvaluateValue(text).Value == -1234);
+		assert(text == ".56789 A");
+	}
+	
+	unittest
+	{
+		string text = " ( -01234 ) A";
+		assert(EvaluateValue(text).Value == -1234);
+		assert(text == "A");
+	}
+	
+	unittest
+	{
+		string text = "5 + 6";
+		assert(Evaluate(text) == (5 + 6));
+	}
+	
+	unittest
+	{
+		string text = "(5 + 6)";
+		assert(Evaluate(text) == (5 + 6));
+	}
+	
+	unittest
+	{
+		string text = "5 + 6 -7 +4";
+		assert(Evaluate(text) == (5 + 6 -7 + 4));
+	}
+	
+	unittest
+	{
+		string text = "(5 + 6 - 7 +4)";
+		assert(Evaluate(text) == (5 + 6 - 7 +4));
+	}
+	
+	unittest
+	{
+		string text = "5 + 6*2/3 -7 ";
+		assert(Evaluate(text) == (5 + 6*2/3 -7));
+	}
+	
+	unittest
+	{
+		string text = "6*(2+4) -7 ";
+		assert(Evaluate(text) == (6*(2+4) -7));
+	}
+	
+	unittest
+	{
+		string text = "(2+4)";
+		assert(Evaluate(text) == (2+4));
+	}
+	
+	unittest
+	{
+		string text = "(2*4)";
+		assert(Evaluate(text) == (2*4));
+	}
+	
+	unittest
+	{
+		string text = "8*3/4";
+		assert(Evaluate(text) == 8*3/4);
+	}
+	
+	unittest
+	{
+		string text = "(8*3/4)";
+		assert(Evaluate(text) == 8*3/4);
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = "";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = " -A";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = " - 6";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = " A ";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
+	}
+	
+	unittest
+	{
+		try
+		{
+			string text = "  ";
+			EvaluateValue(text);
+			assert(false);
+		}
+		catch (EvalException ex1)
+		{
+			assert(true);
+		}
+		catch (Exception ex1)
+		{
+			assert(false);
+		}
+	}	
+}
+
+private  // FormatName
+{
 	// Identify the type of formatting and decompose into the elements
 	string[] DecomposeName(string text)
 	{
@@ -546,230 +763,6 @@ private
 	}
 	
 	
-	string[string] userSections;
-	void ReadSections(string file, string[string] sections)
-	{
-	}
-	
-	void Copy(string from, string to, string[string] sections)
-	{
-		// TODO Implement file merge
-		copy(from, to);
-	}
-			
-	unittest
-	{
-		string text = " 0 A";
-		assert(EvaluateValue(text).Value == 0);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " 00 A";
-		assert(EvaluateValue(text).Value == 0);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " -0 A";
-		assert(EvaluateValue(text).Value == 0);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " -00 A";
-		assert(EvaluateValue(text).Value == 0);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " 0123456789 A";
-		assert(EvaluateValue(text).Value == 123456789);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " -0123456789 A";
-		assert(EvaluateValue(text).Value == -123456789);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = " 01234.56789 A";
-		assert(EvaluateValue(text).Value == 1234);
-		assert(text == ".56789 A");
-	}
-	
-	unittest
-	{
-		string text = " -01234.56789 A";
-		assert(EvaluateValue(text).Value == -1234);
-		assert(text == ".56789 A");
-	}
-	
-	unittest
-	{
-		string text = " ( -01234 ) A";
-		assert(EvaluateValue(text).Value == -1234);
-		assert(text == "A");
-	}
-	
-	unittest
-	{
-		string text = "5 + 6";
-		assert(Evaluate(text) == (5 + 6));
-	}
-	
-	unittest
-	{
-		string text = "(5 + 6)";
-		assert(Evaluate(text) == (5 + 6));
-	}
-	
-	unittest
-	{
-		string text = "5 + 6 -7 +4";
-		assert(Evaluate(text) == (5 + 6 -7 + 4));
-	}
-	
-	unittest
-	{
-		string text = "(5 + 6 - 7 +4)";
-		assert(Evaluate(text) == (5 + 6 - 7 +4));
-	}
-	
-	unittest
-	{
-		string text = "5 + 6*2/3 -7 ";
-		assert(Evaluate(text) == (5 + 6*2/3 -7));
-	}
-	
-	unittest
-	{
-		string text = "6*(2+4) -7 ";
-		assert(Evaluate(text) == (6*(2+4) -7));
-	}
-	
-	unittest
-	{
-		string text = "(2+4)";
-		assert(Evaluate(text) == (2+4));
-	}
-	
-	unittest
-	{
-		string text = "(2*4)";
-		assert(Evaluate(text) == (2*4));
-	}
-	
-	unittest
-	{
-		string text = "8*3/4";
-		assert(Evaluate(text) == 8*3/4);
-	}
-	
-	unittest
-	{
-		string text = "(8*3/4)";
-		assert(Evaluate(text) == 8*3/4);
-	}
-	
-	unittest
-	{
-		try
-		{
-			string text = "";
-			EvaluateValue(text);
-			assert(false);
-		}
-		catch (EvalException ex1)
-		{
-			assert(true);
-		}
-		catch (Exception ex1)
-		{
-			assert(false);
-		}
-	}
-	
-	unittest
-	{
-		try
-		{
-			string text = " -A";
-			EvaluateValue(text);
-			assert(false);
-		}
-		catch (EvalException ex1)
-		{
-			assert(true);
-		}
-		catch (Exception ex1)
-		{
-			assert(false);
-		}
-	}
-	
-	unittest
-	{
-		try
-		{
-			string text = " - 6";
-			EvaluateValue(text);
-			assert(false);
-		}
-		catch (EvalException ex1)
-		{
-			assert(true);
-		}
-		catch (Exception ex1)
-		{
-			assert(false);
-		}
-	}
-	
-	unittest
-	{
-		try
-		{
-			string text = " A ";
-			EvaluateValue(text);
-			assert(false);
-		}
-		catch (EvalException ex1)
-		{
-			assert(true);
-		}
-		catch (Exception ex1)
-		{
-			assert(false);
-		}
-	}
-	
-	unittest
-	{
-		try
-		{
-			string text = "  ";
-			EvaluateValue(text);
-			assert(false);
-		}
-		catch (EvalException ex1)
-		{
-			assert(true);
-		}
-		catch (Exception ex1)
-		{
-			assert(false);
-		}
-	}
-	
 	unittest
 	{
 		auto list = DecomposeName("");
@@ -866,4 +859,128 @@ private
 		assert (list[2] == "BILL");
 		assert (list[3] == "lois");
 	}
+}
+
+private  // Copy
+{
+	
+	string[string] userSections;
+	void ReadSections(string file, string[string] sections)
+	{
+		auto input = new Input.Input(file);
+		
+		while (!input.Eof())
+		{
+			string name; 
+			auto   block = appender!(char[])();
+			
+			while (!input.Eof())
+			{
+				auto line = input.Readln();
+				auto token  = split(line);
+				
+				if ((token.length >= 5) &&
+					(token[1] == "USER") &&
+					(token[2] == "CODE")&&
+					(token[3] == "BEGIN"))
+				{
+					if ((name in sections) != null)
+					{
+						writeln("Duplicate code sections : ", name);
+					}
+					else
+					{					
+						name = token[4];
+						block.clear();
+						block ~= line;
+						break;
+					}
+				}
+			}
+			
+			while (!input.Eof())
+			{
+				auto line = input.Readln();
+				auto token  = split(line);
+				
+				block ~= line;
+				
+				if ((token.length >= 5) &&
+					(token[1] == "USER") &&
+					(token[2] == "CODE"))
+				{
+					if (token[3] == "END")
+					{
+						sections[token[4]] = block[].idup;
+						break;
+					}
+					else if (token[3] == "BEGIN")
+					{
+						writeln("Code section BEGIN before END : ", name);
+					}
+				}
+			}
+		}
+		
+		input.Close();
+	}
+	
+	void Copy(string from, string to, string[string] sections)
+	{
+		auto input  = new Input.Input(from);
+		auto output = new FileOutput(to);
+		
+		while (!input.Eof())
+		{
+			
+			while (!input.Eof())
+			{
+				auto line = input.Readln();
+				auto token  = split(line);
+				
+				if ((token.length >= 5) &&
+					(token[1] == "USER") &&
+					(token[2] == "CODE")&&
+					(token[3] == "BEGIN"))
+				{
+					if ((token[4] in sections) != null)
+					{
+						writeln("Duplicate code sections : ", token[4]);
+					}
+					else
+					{	
+						output.Write(sections[token[4]]);
+						break;
+					}
+				}
+				
+				output.Write(line);
+			}
+			
+			while (!input.Eof())
+			{
+				auto line = input.Readln();
+				auto token  = split(line);
+				
+				if ((token.length >= 5) &&
+					(token[1] == "USER") &&
+					(token[2] == "CODE"))
+				{
+					if (token[3] == "END")
+					{
+						break;
+					}
+					else if (token[3] == "BEGIN")
+					{
+						writeln("Code section BEGIN before END : ", token[4]);
+					}
+				}
+			}
+		}
+		
+		input.Close();
+		output.Close();
+	}
+	
+	
 }

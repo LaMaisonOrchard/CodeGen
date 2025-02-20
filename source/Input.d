@@ -78,42 +78,48 @@ public
 	}
 }
 
-private
+struct Input
 {
-	struct Input
+	this(string filename)
 	{
-		this(string fullPath, string filename)
-		{
-			m_name = filename;
-			m_path = dirName(fullPath);
-			m_line = 0;
-			m_file = File(fullPath, "r");
-		}
-		
-		string Name() {return m_name;}
-		string Path() {return m_path;}
-		ulong  Line() {return m_line;}
-		
-		void Close()
-		{
-			m_file.close();
-		}
-		
-		bool Eof()
-		{
-			return m_file.eof();
-		}
-		
-		string Readln()
-		{
-			m_line += 1;
-			return m_file.readln();
-		}
-		
-		File   m_file;
-		string m_name;
-		string m_path;
-		ulong  m_line;
+		auto fullPath = absolutePath(filename);
+		m_name = filename;
+		m_path = dirName(fullPath);
+		m_line = 0;
+		m_file = File(fullPath, "r");
 	}
+	
+	this(string fullPath, string filename)
+	{
+		m_name = filename;
+		m_path = dirName(fullPath);
+		m_line = 0;
+		m_file = File(fullPath, "r");
+	}
+	
+	string Name() {return m_name;}
+	string Path() {return m_path;}
+	ulong  Line() {return m_line;}
+	
+	void Close()
+	{
+		m_file.close();
+	}
+	
+	bool Eof()
+	{
+		return m_file.eof();
+	}
+	
+	string Readln()
+	{
+		m_line += 1;
+		return m_file.readln();
+	}
+	
+	File   m_file;
+	string m_name;
+	string m_path;
+	ulong  m_line;
 }
 

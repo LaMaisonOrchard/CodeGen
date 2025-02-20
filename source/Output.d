@@ -112,6 +112,17 @@ public
 	
 	class FileOutput : BaseOutput
 	{
+		this(string filename)
+		{
+			m_dir = ".";
+			m_filename = filename;
+			
+			auto fullpath = absolutePath(filename);
+			auto path     = dirName(fullpath);
+			mkdirRecurse(path);
+			m_fp = File(fullpath, "wb"); 
+		}
+		
 		this(string dir, string filename)
 		{
 			m_dir = dir;
@@ -239,6 +250,7 @@ public
 			{
 				m_stack.front().Close();
 				
+				writeln("1) ", m_dir, ":", m_copy);
 				if (m_dir != m_copy)
 				{
 					// Merge the files

@@ -133,7 +133,7 @@ int main(string[] args)
 	{
 		foreach(data ; dataFiles)
 		{
-			tmpl.Generate("stdout", data, ".", ".");
+			tmpl.Generate("stdout", data, dest, copy);
 		}
 	}
 	
