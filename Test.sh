@@ -1,1 +1,1 @@
-dub -- -tmpl test.tmpl test.ptree
+dub -- -tmpl test.tmpl test.ptree -copy other

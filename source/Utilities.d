@@ -66,8 +66,6 @@ public
 	
 	long Evaluate(string text)
 	{
-		//writeln("EVAL : ", text);
-	
 		auto v1 = EvaluateValue(text);
 		 
 		if (text.length > 0)
@@ -136,8 +134,6 @@ private  // Evaluate
 			m_op = op;
 			m_v1 = v1;
 			m_v2 = v2;
-			
-			//writeln("OP : ", m_v1.Value, m_op, m_v2.Value);
 		}
 		
 		override long Value()
@@ -865,7 +861,7 @@ private  // Copy
 {
 	
 	string[string] userSections;
-	void ReadSections(string file, string[string] sections)
+	void ReadSections(string file, ref string[string] sections)
 	{
 		auto input = new Input.Input(file);
 		
@@ -911,7 +907,7 @@ private  // Copy
 				{
 					if (token[3] == "END")
 					{
-						sections[token[4]] = block[].idup;
+						sections[name] = block[].idup;
 						break;
 					}
 					else if (token[3] == "BEGIN")
@@ -943,15 +939,8 @@ private  // Copy
 					(token[2] == "CODE")&&
 					(token[3] == "BEGIN"))
 				{
-					if ((token[4] in sections) != null)
-					{
-						writeln("Duplicate code sections : ", token[4]);
-					}
-					else
-					{	
-						output.Write(sections[token[4]]);
-						break;
-					}
+					output.Write(sections[token[4]]);
+					break;
 				}
 				
 				output.Write(line);
