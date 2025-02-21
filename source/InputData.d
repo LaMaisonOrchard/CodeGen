@@ -70,6 +70,7 @@ final class TreeNode : IDataBlock
 	{
 		m_posn  = posn;
 		m_class = className;
+		AddStd("CLASS", m_class);
 	}
 	
 	void Add(string name, string subtype, string value)

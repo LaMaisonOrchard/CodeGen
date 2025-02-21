@@ -18,7 +18,7 @@ int main(string[] args)
 	IDataBlock[]        dataFiles;
 	Template.Template[] templates;
 	
-	string dest = ".";
+	string dest = "tmp";
 	string copy;
 	
 	int rtn = 0;
@@ -111,6 +111,7 @@ int main(string[] args)
 					auto data = ParseData(args[i]);
 					if (data is null)
 					{
+					writeln("####",args[i]);
 						rtn = -2;
 					}
 					else

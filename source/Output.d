@@ -250,7 +250,6 @@ public
 			{
 				m_stack.front().Close();
 				
-				writeln("1) ", m_dir, ":", m_copy);
 				if (m_dir != m_copy)
 				{
 					// Merge the files

@@ -101,7 +101,7 @@ public
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
-					m_column.Generate(stack, "");
+					m_column.Generate(stack, callSubtype);
 					auto eval = text.Text();
 					stack.Close();
 					
@@ -133,7 +133,7 @@ public
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
-					m_tab.Generate(stack, "");
+					m_tab.Generate(stack, callSubtype);
 					auto eval = text.Text();
 					stack.Close();
 					
@@ -232,7 +232,7 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack, subtype);
+						m_subtype.Generate(stack, callSubtype);
 						subtype = text.Text();
 						stack.Close();
 					}
@@ -264,7 +264,7 @@ public
 					{
 						auto text = new TextOutput();
 						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack, subtype);
+						m_subtype.Generate(stack, callSubtype);
 						subtype = text.Text();
 						stack.Close();
 					}
@@ -339,32 +339,29 @@ public
 					}
 					
 					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-					if (block !is null)
+					auto list  = this.outer.m_data.List(m_leaf, m_using);
+					
+					if (list[0])
 					{
-						auto list = this.outer.m_data.List(m_leaf, m_using);
+						bool first = true;
+						foreach (data ; list[1])
+						{
+							this.outer.m_data.Push(data);
 						
-						if (list[0])
-						{
-							bool first = true;
-							foreach (data ; list[1])
+							if (!first)
 							{
-								this.outer.m_data.Push(data);
-							
-								if (!first)
-								{
-									output.Write(sep);
-								}
-								
-								ExpandBlock(output, block, m_name, subtype, callSubtype);
-								first = false;
-								
-								this.outer.m_data.Pop();
+								output.Write(sep);
 							}
+							
+							ExpandBlock(output, block, m_name, subtype, callSubtype);
+							first = false;
+							
+							this.outer.m_data.Pop();
 						}
-						else
-						{
-							Error(Posn(), "Invalid list : ", m_using);
-						}
+					}
+					else
+					{
+						Error(Posn(), "Invalid list : ", m_using);
 					}
 				}
 				
@@ -802,7 +799,7 @@ public
 						i += 1;
 						ulong start = i;
 						
-						for (; (i < line.length-1); i += 1)
+						for (; (i < line.length); i += 1)
 						{
 							if (line[i] == ')')
 							{
@@ -1164,9 +1161,14 @@ public
 				// Check if it has a name
 				if (block.Name().length > 0)
 				{
-					if (FindBlock(posn, block.Name(), block.SubType()) is null)
+					auto existing = FindBlock(posn, block.Name(), block.SubType());
+					if (existing is null)
 					{
 						m_blocks ~= block;
+					}
+					else if (existing.SubType() != block.SubType())
+					{
+						Error(posn, "Masked block definition : ", block.Ref(), " masked by ", existing.Posn(), existing.Ref());
 					}
 					else
 					{
