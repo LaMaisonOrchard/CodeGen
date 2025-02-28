@@ -111,7 +111,7 @@ struct Input
 		return m_file.eof();
 	}
 	
-	string Readln()
+	@trusted string Readln()
 	{
 		m_line += 1;
 		return m_file.readln();

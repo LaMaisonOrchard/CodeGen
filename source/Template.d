@@ -21,7 +21,7 @@ public
 {	
 	final class Template
 	{
-		this(string filename)
+		@trusted this(string filename)
 		{
 			try
 			{
@@ -97,7 +97,7 @@ public
 					m_column = column;
 				}
 				
-				override void Expand(OutputStack output, string callSubtype)
+				@trusted override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
@@ -129,7 +129,7 @@ public
 					m_tab  = tab;
 				}
 				
-				override void Expand(OutputStack output, string callSubtype)
+				@trusted override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
@@ -484,7 +484,7 @@ public
 					super(posn, name, subtype);
 				}
 				
-				override void Generate(OutputStack output, string callSubtype)
+				@trusted override void Generate(OutputStack output, string callSubtype)
 				{
 					auto text_output = new TextOutput();
 					auto stack       = new OutputStack(text_output);

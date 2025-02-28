@@ -111,7 +111,7 @@ int main(string[] args)
 					auto data = ParseData(args[i]);
 					if (data is null)
 					{
-					writeln("####",args[i]);
+						writeln("Bad input : ", args[i]);
 						rtn = -2;
 					}
 					else

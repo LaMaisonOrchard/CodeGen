@@ -7,6 +7,7 @@
 
 import std.container;
 import std.stdio;
+import std.array;
 import std.typecons;
 import std.path;
 import Input;
@@ -45,22 +46,75 @@ private
 
 IDataBlock ParseTree(string name)
 {
-	auto top = new TreeNode("[TOP]", "TOP");
-	AddEntry(top);
-	AddEntry(top);
-	AddEntry(top);
+	auto input = new InputStack(name);
 	
-	return top;
+	while (!input.Eof())
+	{
+		auto line = input.ReadLine();
+		auto token  = split(line);
+		
+		if (token.length >= 2)
+		{
+			if (token[0] == "NODE")
+			{
+				auto top = new TreeNode(input.Posn(), token[1]);
+				ReadNode(input, top);
+				return top;
+			}
+		}
+	}
+	
+	return null;
 }
 
-void AddEntry(TreeNode top)
+void ReadNode(InputStack input, TreeNode node)
 {
-	auto entry = new TreeNode("[ENTRY]", "ENTRY");
-	auto bill  = new TreeNode("[BILL]", "BILL");
-	
-	top.AddList("ENTRY", entry);
-	entry.AddUsing("BILL", bill);
-	bill.AddStd("LOIS", "Hello "~bill.Class());
+	while (!input.Eof())
+	{
+		auto line = input.ReadLine();
+		auto token  = split(line);
+		
+		if (token.length >= 1)
+		{
+			switch(token[0])
+			{
+				// End of the node
+				case "END": return;
+				
+				// Block entry
+				case "SET":
+					if (token.length >= 3)
+					{
+						node.Add(token[1], token[2]);
+					}
+					break;
+				
+				// Using entry
+				case "USE":
+					if (token.length >= 3)
+					{
+						auto next = new TreeNode(input.Posn(), token[2]);
+						node.AddUsing(token[1], next);
+						ReadNode(input, next);
+					}
+					break;
+				
+				// Using entry
+				case "LIST":
+					if (token.length >= 3)
+					{
+						auto next = new TreeNode(input.Posn(), token[2]);
+						node.AddList(token[1], next);
+						ReadNode(input, next);
+					}
+					break;
+					
+				default:
+					// Discard
+					break;
+			}
+		}
+	}
 }
 
 
@@ -76,6 +130,11 @@ final class TreeNode : IDataBlock
 	void Add(string name, string subtype, string value)
 	{
 		m_blocks[name~":"~subtype] = value;
+	}
+	
+	void Add(string blockName, string value)
+	{
+		m_blocks[blockName] = value;
 	}
 	
 	void AddStd(string name, string value)
