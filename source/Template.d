@@ -12,6 +12,7 @@ import std.uni;
 import std.format;
 import std.typecons;
 import std.datetime;
+import std.process;
 import Input;
 import Output;
 import Data;
@@ -200,6 +201,26 @@ public
 						{
 							auto now = Clock.currTime();
 							output.Write(format("%d", now.year()));
+							return true;
+						}
+						
+						case "USER":
+						{
+							string user;
+						    if ("USER" in environment)
+							{
+								user = environment["USER"];
+							}
+						    else if ("USERNAME" in environment)
+							{
+								user = environment["USERNAME"];
+							}
+						    else
+							{
+								user = "<UNKNOWN>";
+							}
+							
+							output.Write(FormatName(user, subtype));
 							return true;
 						}
 						

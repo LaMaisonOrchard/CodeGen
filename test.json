@@ -1,0 +1,9 @@
+{
+	"fred": "harry",
+	"bill": -89,
+	"lois" : true,
+	"janet": false ,
+	"NULL": null,
+	"list": [],
+	"obj" : {}
+}

@@ -20,6 +20,7 @@ public
 		{
 			auto fullpath = absolutePath(filename);
 			m_stack = SList!Input(Input(fullpath, filename));
+			m_put = '\0';
 		}
 		
 		string Posn()
@@ -37,6 +38,29 @@ public
 			else
 			{
 				return m_stack.front().Readln();
+			}
+		}
+		
+		void Put(char ch)
+		{
+			m_put = ch;
+		}
+		
+		char Get()
+		{
+			if (m_put != '\0')
+			{
+				auto ch = m_put;
+				m_put = '\0';
+				return ch;
+			}
+			else if (Eof())
+			{
+				return '\0';
+			}
+			else 
+			{
+				return m_stack.front().Get();
 			}
 		}
 		
@@ -75,6 +99,7 @@ public
 		
 		SList!Input m_stack;
 		int         m_line;
+		char        m_put;
 	}
 }
 
@@ -87,6 +112,7 @@ struct Input
 		m_path = dirName(fullPath);
 		m_line = 0;
 		m_file = File(fullPath, "r");
+		m_lastCh = '\0';
 	}
 	
 	this(string fullPath, string filename)
@@ -117,9 +143,39 @@ struct Input
 		return m_file.readln();
 	}
 	
+	@trusted char Get()
+	{
+		char[1] ch_a;
+		char ch = m_file.rawRead(ch_a)[0];
+		
+		if (ch == '\r')
+		{
+			if (m_lastCh != '\n')
+			{
+				m_lastCh = ch;
+				m_line += 1;
+			}
+		}
+		else if (ch =='\n')
+		{
+			if (m_lastCh != '\r')
+			{
+				m_lastCh = ch;
+				m_line += 1;
+			}
+		}
+		else
+		{
+			m_lastCh = ch;
+		}
+		
+		return ch;
+	}
+	
 	File   m_file;
 	string m_name;
 	string m_path;
+	char   m_lastCh;
 	ulong  m_line;
 }
 

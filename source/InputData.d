@@ -14,6 +14,7 @@ import Input;
 import Output;
 import Data;
 import Utilities;
+import JSON;
 
 public
 {
@@ -27,6 +28,9 @@ public
 			{
 				case ".ptree":
 					return ParseTree(filename);
+					
+				case ".json":
+					return ParseJson(filename);
 					
 				default:
 					writeln("Error : Unrecognised file type : ", filename);
