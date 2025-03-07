@@ -146,30 +146,34 @@ struct Input
 	@trusted char Get()
 	{
 		char[1] ch_a;
-		char ch = m_file.rawRead(ch_a)[0];
 		
-		if (ch == '\r')
+		if (m_file.rawRead(ch_a).length > 0)
 		{
-			if (m_lastCh != '\n')
+			if (ch_a[0] == '\r')
 			{
-				m_lastCh = ch;
-				m_line += 1;
+				if (m_lastCh != '\n')
+				{
+					m_lastCh = ch_a[0];
+					m_line += 1;
+				}
 			}
-		}
-		else if (ch =='\n')
-		{
-			if (m_lastCh != '\r')
+			else if (ch_a[0] =='\n')
 			{
-				m_lastCh = ch;
-				m_line += 1;
+				if (m_lastCh != '\r')
+				{
+					m_lastCh = ch_a[0];
+					m_line += 1;
+				}
 			}
-		}
-		else
-		{
-			m_lastCh = ch;
+			else
+			{
+				m_lastCh = ch_a[0];
+			}
+			
+			return ch_a[0];
 		}
 		
-		return ch;
+		return '\0';
 	}
 	
 	File   m_file;
