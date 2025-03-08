@@ -38,6 +38,7 @@ public
 		if (token.type == Type.OBJ_OPEN)
 		{
 			root = new JsonBlock(input);
+			root.Add("[ROOT]", "FILENAME", baseName(name, ".json"));
 		}
 		else
 		{
@@ -160,6 +161,7 @@ private
 					case Type.STRING:
 						{
 							string name = token.text;
+							string posn = input.Posn();
 							
 							token = input.Get();
 							if (token.type != Type.COLON)
@@ -178,17 +180,17 @@ private
 									case Type.STRING:
 									case Type.VALUE:
 									case Type.LITTERAL:
-										Add(name, token.text);
+										Add(posn, name, token.text);
 										break;
 										
 									case Type.OBJ_OPEN:
 										auto block = new JsonBlock(input);
-										Add(name, block);
+										Add(posn, name, block);
 										m_error = m_error || block.HasError();
 										break;
 										
 									case Type.LIST_OPEN:
-										Add(name, ParseList(input));
+										Add(posn, name, ParseList(input));
 										break;
 										
 									default:
@@ -284,18 +286,36 @@ private
 			return list[].dup;
 		}
 		
-		void Add(string name, string value)
+		void Add(string posn, string name, string value)
 		{
+			if ((name in m_names) !is null)
+			{
+				Error(posn, "duplicate field : " ~ name);
+			}
+			
+			m_names[name] = true;
 			m_blocks[name] = value;
 		}
 		
-		void Add(string name, IDataBlock value)
+		void Add(string posn, string name, IDataBlock value)
 		{
+			if ((name in m_names) !is null)
+			{
+				Error(posn, "duplicate field : " ~ name);
+			}
+			
+			m_names[name] = true;
 			m_using[name] = value;
 		}
 		
-		void Add(string name, IDataBlock[] value)
+		void Add(string posn, string name, IDataBlock[] value)
 		{
+			if ((name in m_names) !is null)
+			{
+				Error(posn, "duplicate field : " ~ name);
+			}
+			
+			m_names[name] = true;
 			m_list[name] = value;
 		}
 		
@@ -326,6 +346,7 @@ private
 			}
 		}
 		
+		bool[string]         m_names;
 		string[string]       m_blocks;
 		IDataBlock[string]   m_using;
 		IDataBlock[][string] m_list;
