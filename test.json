@@ -1,9 +1,37 @@
 {
+	"CLASS": "TOP",
 	"fred": "harry",
 	"bill": -89,
 	"lois" : true,
 	"janet": false ,
 	"NULL": null,
 	"list": [],
-	"obj" : {}
+	"obj" : {},
+	"ENTRY":
+	[
+		{
+			"CLASS": "ENTRY",
+			"BILL":
+			{
+				"CLASS": "BILL",
+				"LOIS": "Harry1"
+			}
+		},
+		{
+			"CLASS": "ENTRY",
+			"BILL":
+			{
+				"CLASS": "BILL",
+				"LOIS": "Harry2"
+			}
+		},
+		{
+			"CLASS": "ENTRY",
+			"BILL":
+			{
+				"CLASS": "BILL",
+				"LOIS": "Harry3"
+			}
+		}
+	]
 }

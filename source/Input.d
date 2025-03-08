@@ -25,8 +25,15 @@ public
 		
 		string Posn()
 		{
-			auto active = m_stack.front();
-			return format("[%s:%d]", active.Name(), active.Line());
+			if (!m_stack.empty())
+			{
+				auto active = m_stack.front();
+				return format("[%s:%d]", active.Name(), active.Line());
+			}
+			else
+			{
+				return "<EOF>";
+			}
 		}
 		
 		string ReadLine()
@@ -146,6 +153,11 @@ struct Input
 	@trusted char Get()
 	{
 		char[1] ch_a;
+		
+		if (m_line == 0)
+		{
+			m_line = 1;
+		}
 		
 		if (m_file.rawRead(ch_a).length > 0)
 		{

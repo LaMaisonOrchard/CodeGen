@@ -39,6 +39,7 @@ public
 		}
 		catch (Exception ex)
 		{
+			writeln("Error : ", ex.message);
 			writeln("Error : Can't open file : ", filename);
 			return null;
 		}

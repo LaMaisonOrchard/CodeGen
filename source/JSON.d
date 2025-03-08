@@ -41,15 +41,19 @@ public
 		}
 		else
 		{
-			throw new JsonException("Requires outer object");
+			throw new JsonException(input.Posn()~"Requires outer object");
 		}
 		
 		token = input.Get();
 		if (token.type != Type.EOF)
 		{
-			throw new JsonException("Extra data at the end");
+			throw new JsonException(input.Posn()~"Extra data at the end");
 		}
 		
+		if (input.HasError() || root.HasError())
+		{
+			throw new JsonException(input.Posn()~"Parse error");
+		}
 		
 		return root;
 	}
@@ -62,8 +66,14 @@ private
 	{
 		this(Tokenise input)
 		{
-			m_posn = input.Posn();
+			m_error = false;
+			m_posn  = input.Posn();
 			Parse(input);
+		}
+		
+		bool HasError()
+		{
+			return m_error;
 		}
 		
 		// A string to identify this type of data object
@@ -104,7 +114,7 @@ private
 			}
 			else
 			{
-				return tuple(false, DList!IDataBlock(*p));
+				return tuple(true, DList!IDataBlock(*p));
 			}
 			
 		}
@@ -129,6 +139,12 @@ private
 		{
 		}
 		
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+			m_error = true;
+		}
+		
 		void Parse(Tokenise input)
 		{
 			Token token = input.Get();
@@ -138,7 +154,8 @@ private
 				switch (token.type)
 				{
 					case Type.EOF:
-						throw new JsonException("Unclosed object");
+						Error(input.Posn(), "Unclosed object");
+						return;
 						
 					case Type.STRING:
 						{
@@ -147,7 +164,7 @@ private
 							token = input.Get();
 							if (token.type != Type.COLON)
 							{
-								throw new JsonException("Missing Colon");
+								Error(input.Posn(), "Missing Colon");
 							}
 							else
 							{
@@ -155,7 +172,8 @@ private
 								switch (token.type)
 								{
 									case Type.EOF:
-										throw new JsonException("Missing value");
+										Error(input.Posn(), "Missing Colon");
+										return;
 										
 									case Type.STRING:
 									case Type.VALUE:
@@ -164,7 +182,9 @@ private
 										break;
 										
 									case Type.OBJ_OPEN:
-										Add(name, new JsonBlock(input));
+										auto block = new JsonBlock(input);
+										Add(name, block);
+										m_error = m_error || block.HasError();
 										break;
 										
 									case Type.LIST_OPEN:
@@ -172,8 +192,9 @@ private
 										break;
 										
 									default:
-										throw new JsonException("Invalid object");
-										break;
+										Error(input.Posn(), "Invalid object");
+										SkipObject(input);
+										return;
 								}
 							}
 							
@@ -189,7 +210,9 @@ private
 							}
 							else
 							{
-								throw new JsonException("Invalid object");
+								Error(input.Posn(), "Missing comma");
+								SkipObject(input);
+								return;
 							}
 							
 							break;
@@ -199,8 +222,9 @@ private
 						return;
 						
 					default:
-						throw new JsonException("Invalid object");
-						break;
+						Error(input.Posn(), "Invalid object");
+						SkipObject(input);
+						return;
 				}
 			}
 		}
@@ -216,7 +240,8 @@ private
 				switch (token.type)
 				{
 					case Type.EOF:
-						throw new JsonException("Unclosed list");
+						Error(input.Posn(), "Unclosed list");
+						return list[].dup;
 						
 					case Type.STRING:
 					case Type.VALUE:
@@ -231,11 +256,13 @@ private
 						break;
 						
 					case Type.LIST_OPEN:
-						throw new JsonException("List of lists are not supported");
+						Error(input.Posn(), "List of lists are not supported");
+						ParseList(input);
 						break;
 						
 					default:
-						throw new JsonException("Invalid object");
+						Error(input.Posn(), "Invalid list");
+						token = input.Get();
 						break;
 				}
 				
@@ -249,7 +276,8 @@ private
 				}
 				else
 				{
-					throw new JsonException("Invalid list");
+					Error(input.Posn(), "Missing comma");
+					token = input.Get();
 				}
 			}
 			
@@ -271,10 +299,38 @@ private
 			m_list[name] = value;
 		}
 		
+		void SkipObject(Tokenise input)
+		{
+			int count = 1;
+			
+			while (count > 0)
+			{
+				Token token = input.Get();
+				
+				if (token.type == Type.EOF)
+				{
+					count = 0;
+				}
+				else if (token.type == Type.OBJ_OPEN)
+				{
+					count += 1;
+				}
+				else if (token.type == Type.OBJ_CLOSE)
+				{
+					count -= 1;
+				}
+				else
+				{
+					//Skip
+				}
+			}
+		}
+		
 		string[string]       m_blocks;
 		IDataBlock[string]   m_using;
 		IDataBlock[][string] m_list;
 		string m_posn;
+		bool   m_error;
 	}
 	
 	final class ValueBlock : IDataBlock
@@ -353,12 +409,19 @@ private
 	{
 		this(InputStack input)
 		{
+			m_error = false;
 			m_input = input;
+			m_posn  = "<START>";
 		}
 		
 		string Posn()
 		{
 			return m_posn;
+		}
+		
+		bool HasError()
+		{
+			return m_error;
 		}
 		
 		Token Get()
@@ -397,10 +460,16 @@ private
 					case '\r':
 					case '\n':
 					case '\t':
+						while (isWhite(ch))
+						{
+							ch = m_input.Get();
+						}
+						m_input.Put(ch);
 						break;  // White space
 						
 					default:
-						throw new JsonException("Illegal input char");
+						Error(m_input.Posn(), "Illegal input char");
+						ch = m_input.Get();
 						break;
 				}
 			}
@@ -414,6 +483,7 @@ private
 			do
 			{
 				ch = m_input.Get();
+				
 				if (ch == '\\')
 				{
 					ch = m_input.Get();
@@ -421,7 +491,8 @@ private
 					switch (ch)
 					{
 						case '\0':
-							break;
+							Error(m_input.Posn(), "Unterminated string");
+							return text[].idup;
 							
 						case 'n':
 							text ~= '\n';
@@ -440,13 +511,14 @@ private
 							break;
 					}
 				}
-				else if (ch == '\0')
+				else if ((ch == '\0') || (ch == '\r') || (ch == '\n'))
 				{
-					throw new JsonException("Unterminated string");
+					Error(m_input.Posn(), "Unterminated string");
+					return text[].idup;
 				}
 				else if (ch == '\"')
 				{
-				
+					return text[].idup;
 				}
 				else
 				{
@@ -455,7 +527,8 @@ private
 				
 				if (ch == '\0')
 				{
-					throw new JsonException("Unterminated string");
+					Error(m_input.Posn(), "Unterminated string");
+					return text[].idup;
 				}
 			}
 			while (ch != '\"');
@@ -467,63 +540,101 @@ private
 		{
 			if (m_input.Get() != 'r')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'u')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'e')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else
 			{
 				return "true";
 			}
+			
+			return "<error>";
 		}
 
 		string ParseFalse()
 		{
 			if (m_input.Get() != 'a')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'l')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 's')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'e')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else
 			{
 				return "false";
 			}
+			
+			return "<error>";
 		}
 
 		string ParseNull()
 		{
 			if (m_input.Get() != 'u')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'l')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else if (m_input.Get() != 'l')
 			{
-				throw new JsonException("Illegal litteral");
+				Error(m_input.Posn(), "Illegal litteral");
+				SkipText();
 			}
 			else
 			{
 				return "null";
+			}
+			
+			return "<error>";
+		}
+		
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+			m_error = true; 
+		}
+		
+		void SkipText()
+		{
+			char ch;
+			
+			do
+			{
+				ch = m_input.Get();
+			}
+			while (isAlpha(ch));
+			
+			if (ch != '\"')
+			{
+				m_input.Put(ch);
 			}
 		}
 
@@ -545,6 +656,7 @@ private
 		
 		InputStack m_input;
 		string     m_posn;
+		bool       m_error;
 	}
 
 }
