@@ -81,7 +81,7 @@ public
 			return m_stack.empty();
 		}
 		
-		bool Push(string filename)
+		@trusted bool Push(string filename)
 		{
 			try
 			{
