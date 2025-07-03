@@ -24,6 +24,11 @@ public
 		}
 	}
 	
+	@trusted string GetMessage(Exception ex)
+	{
+		return ex.message.idup;
+	}
+	
 	// Format the text according to the subtype
 	string FormatName(string text, string subtype)
 	{
@@ -877,19 +882,25 @@ private  // Copy
 				
 				if ((token.length >= 5) &&
 					(token[1] == "USER") &&
-					(token[2] == "CODE")&&
-					(token[3] == "BEGIN"))
+					(token[2] == "CODE"))
 				{
-					if ((name in sections) != null)
+					if (token[3] == "END")
 					{
-						writeln("Duplicate code sections : ", name);
+						writeln("Code section END before BEGIN : ", token[4]);
 					}
-					else
-					{					
-						name = token[4];
-						block.clear();
-						block ~= line;
-						break;
+					else if (token[3] == "BEGIN")
+					{
+						if ((token[4] in sections) != null)
+						{
+							writeln("Duplicate code sections : ", token[4]);
+						}
+						else
+						{					
+							name = token[4];
+							block.clear();
+							block ~= line;
+							break;
+						}
 					}
 				}
 			}
@@ -936,11 +947,17 @@ private  // Copy
 				
 				if ((token.length >= 5) &&
 					(token[1] == "USER") &&
-					(token[2] == "CODE")&&
-					(token[3] == "BEGIN"))
+					(token[2] == "CODE"))
 				{
-					output.Write(sections[token[4]]);
-					break;
+					if (token[3] == "END")
+					{
+						writeln("Code section END before BEGIN : ", token[4]);
+					}
+					else if (token[3] == "BEGIN")
+					{
+						output.Write(sections[token[4]]);
+						break;
+					}
 				}
 				
 				output.Write(line);

@@ -22,7 +22,7 @@ public
 {	
 	final class Template
 	{
-		@trusted this(string filename)
+		this(string filename)
 		{
 			try
 			{
@@ -31,7 +31,7 @@ public
 			}
 			catch (Exception ex)
 			{
-				Error("[<root>]", ex.message().idup);
+				Error("[<root>]", GetMessage(ex));
 			}
 		}
 		
@@ -98,7 +98,7 @@ public
 					m_column = column;
 				}
 				
-				@trusted override void Expand(OutputStack output, string callSubtype)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
@@ -113,7 +113,7 @@ public
 					}
 					catch (EvalException ex)
 					{
-						this.outer.Error(m_posn, ex.message().idup);
+						this.outer.Error(m_posn, GetMessage(ex));
 						output.Write("NaN");
 					}
 				}
@@ -130,7 +130,7 @@ public
 					m_tab  = tab;
 				}
 				
-				@trusted override void Expand(OutputStack output, string callSubtype)
+				override void Expand(OutputStack output, string callSubtype)
 				{
 					auto text  = new TextOutput();
 					auto stack = new OutputStack(text);
@@ -145,7 +145,7 @@ public
 					}
 					catch (EvalException ex)
 					{
-						this.outer.Error(m_posn, ex.message().idup);
+						this.outer.Error(m_posn, GetMessage(ex));
 						output.Write("NaN");
 					}
 				}
@@ -505,7 +505,7 @@ public
 					super(posn, name, subtype);
 				}
 				
-				@trusted override void Generate(OutputStack output, string callSubtype)
+				override void Generate(OutputStack output, string callSubtype)
 				{
 					auto text_output = new TextOutput();
 					auto stack       = new OutputStack(text_output);
@@ -525,7 +525,7 @@ public
 					}
 					catch (EvalException ex)
 					{
-						//this.outer.Error(Posn(), ex.message().idup);
+						//this.outer.Error(Posn(), GetMessage(ex));
 						output.Write("NaN");
 					}
 				}

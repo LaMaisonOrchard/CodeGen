@@ -22,8 +22,6 @@ public
 	{
 		try
 		{
-			auto input = new InputStack(filename);
-			
 			switch(extension(filename))
 			{
 				case ".json":
@@ -36,7 +34,7 @@ public
 		}
 		catch (Exception ex)
 		{
-			writeln("Error : ", ex.message);
+			writeln("Error : ", GetMessage(ex));
 			writeln("Error : Can't read file : ", filename);
 			return null;
 		}
