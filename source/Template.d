@@ -1155,7 +1155,6 @@ public
 					case "LIST":
 						reference = new LoopRef(posn, leaf, item, sep, name, subtype);
 						break;
-						break;
 						
 					default:
 						reference = new BlockRef(posn, name, subtype);
