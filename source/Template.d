@@ -35,6 +35,19 @@ public
 			}
 		}
 		
+		this(InputStack stack)
+		{
+			try
+			{
+				m_error = false;
+				Parse(stack);
+			}
+			catch (Exception ex)
+			{
+				Error("[<root>]", GetMessage(ex));
+			}
+		}
+		
 		bool HasError() {return m_error;}
 		
 		void Generate(string name, IDataBlock context, string dir, string copy)
@@ -617,6 +630,12 @@ public
 								text.clear();
 								continue;
 							}
+							else if (line[0 .. 4] == "!SET")
+							{
+								ParseSetting(input.Posn(), line[4..$]);
+								text.clear();
+								continue;
+							}
 							else if (line[0 .. 4] == "!INC")
 							{
 								if (ParseInclude(line[4..$], input))
@@ -659,6 +678,81 @@ public
 					Error(input.Posn(), "Unclosed block");
 				}
 			}
+			
+			void ParseSetting(string posn, string line)
+			{
+				ulong  i = 0;
+				ulong  start;
+				string name;
+				bool   value = false;
+				
+				// Name
+				// Strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				start = i;
+				while ((i < line.length) && !isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if (start == i)
+				{
+					// No name
+					Error(posn, "Missing setting name : ");
+					return;
+				}
+				else
+				{
+					name = line[start .. i];
+				}
+				
+				// Value
+				// Strip white space
+				while ((i < line.length) && isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				start = i;
+				while ((i < line.length) && !isWhite(line[i]))
+				{
+					i += 1;
+				}
+				
+				if (start == i)
+				{
+					// No name
+					Error(posn, "Missing setting value : ");
+				}
+				else if (line[start .. i] == "true")
+				{
+					value = true;
+				}
+				else if (line[start .. i] == "1")
+				{
+					value = true;
+				}
+				else if (line[start .. i] == "false")
+				{
+					value = false;
+				}
+				else if (line[start .. i] == "0")
+				{
+					value = false;
+				}
+				else
+				{
+					Error(posn, "Invalid setting : ", name);
+					return;
+				}
+				
+				m_settings[name] = value;
+			}
+			
 			
 			string ParseBlockName(string posn, string line, ref string name, ref string subtype)
 			{
@@ -1211,6 +1305,25 @@ public
 				return null;
 			}
 			
+			bool isSet(string name)
+			{
+				return isSet(name, false);
+			}
+			
+			bool isSet(string name, bool defaultVal)
+			{
+				bool rtn = defaultVal;
+				
+				if ((name in m_settings) != null)
+				{
+					rtn = m_settings[name];
+				}
+						
+				return rtn;
+			}
+			
+			bool[string] m_settings;
+			
 			Block[]     m_blocks;
 			OutputStack m_output;
 			DataStack   m_data;
@@ -1221,7 +1334,36 @@ public
 
 private
 {
-			
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred true\n!SET harry false")));
+		
+		assert (tmpl.isSet("fred"));
+		assert (!tmpl.isSet("harry"));
+		assert (!tmpl.isSet("unknown"));
+		assert (!tmpl.HasError);
+	}
+	
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred 1\n!SET harry 0")));
+		
+		assert (tmpl.isSet("fred"));
+		assert (!tmpl.isSet("harry"));
+		assert (!tmpl.isSet("unknown"));
+		assert (!tmpl.HasError);
+	}
+	
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred True\n!SET harry False")));
+		
+		assert (!tmpl.isSet("fred"));
+		assert (!tmpl.isSet("harry"));
+		assert (!tmpl.isSet("unknown"));
+		assert (tmpl.HasError);
+	}
+				
 	bool IsBlockNameChar(char ch)
 	{
 		return (isAlpha(ch) && isUpper(ch)) ||

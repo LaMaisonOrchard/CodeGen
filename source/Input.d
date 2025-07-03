@@ -19,7 +19,13 @@ public
 		this(string filename)
 		{
 			auto fullpath = absolutePath(filename);
-			m_stack = SList!Input(Input(fullpath, filename));
+			m_stack.insert(new Input(fullpath, filename));
+			m_put = '\0';
+		}
+		
+		this(BaseInput input)
+		{
+			m_stack.insert(input);
 			m_put = '\0';
 		}
 		
@@ -86,7 +92,7 @@ public
 			try
 			{
 				auto fullpath = absolutePath(filename, m_stack.front().Path());
-				m_stack.insert(Input(fullpath, filename));
+				m_stack.insert(new Input(fullpath, filename));
 				return true;
 			}
 			catch (Exception ex)
@@ -104,13 +110,111 @@ public
 			}
 		}
 		
-		SList!Input m_stack;
-		int         m_line;
-		char        m_put;
+		SList!BaseInput m_stack;
+		int             m_line;
+		char            m_put;
 	}
 }
 
-struct Input
+class BaseInput
+{
+	string Name() {return "";}
+	string Path() {return "";}
+	ulong  Line() {return 0;}
+	
+	void Close()
+	{
+	}
+	
+	bool Eof()
+	{
+		return true;
+	}
+	
+	string Readln()
+	{
+		return "";
+	}
+	
+	char Get()
+	{
+		return '\0';
+	}
+	
+}
+
+class LitteralInput : BaseInput
+{
+	this(string text)
+	{
+		m_text = text;
+		m_posn = 0;
+		m_line = 0;
+	}
+	
+	override string Name() {return "<INTERNAL>";}
+	override string Path() {return "";}
+	override ulong  Line() {return m_line;}
+	
+	override void Close()
+	{
+		m_text = "";
+		m_posn = 0;
+	}
+	
+	override bool Eof()
+	{
+		return (m_posn >= m_text.length);
+	}
+	
+	override string Readln()
+	{
+		m_line += 1;
+		ulong start = m_posn;
+		while ((m_posn < m_text.length) &&
+		       (m_text[m_posn] != '\n') &&
+			   (m_text[m_posn] != '\r'))
+		{
+			m_posn += 1;
+		}
+		
+		auto line = m_text[start .. m_posn];
+		
+		if (m_posn < m_text.length)
+		{
+			m_posn += 1;
+		}
+		
+		return line;
+	}
+	
+	override char Get()
+	{
+		char[1] ch_a;
+		
+		if (m_line == 0)
+		{
+			m_line = 1;
+		}
+		
+		if (m_posn < m_text.length)
+		{
+			auto ch = m_text[m_posn];
+			m_posn += 1;
+			return ch;
+		}
+		
+		return '\0';
+	}
+	
+	string m_text;
+	ulong  m_posn;
+	ulong  m_line;
+}
+
+
+
+class Input : BaseInput
 {
 	this(string filename)
 	{
@@ -130,27 +234,27 @@ struct Input
 		m_file = File(fullPath, "r");
 	}
 	
-	string Name() {return m_name;}
-	string Path() {return m_path;}
-	ulong  Line() {return m_line;}
+	override string Name() {return m_name;}
+	override string Path() {return m_path;}
+	override ulong  Line() {return m_line;}
 	
-	void Close()
+	override void Close()
 	{
 		m_file.close();
 	}
 	
-	bool Eof()
+	override bool Eof()
 	{
 		return m_file.eof();
 	}
 	
-	@trusted string Readln()
+	@trusted override string Readln()
 	{
 		m_line += 1;
 		return m_file.readln();
 	}
 	
-	@trusted char Get()
+	@trusted override char Get()
 	{
 		char[1] ch_a;
 		
