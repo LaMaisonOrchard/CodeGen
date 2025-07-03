@@ -52,7 +52,7 @@ public
 		
 		void Generate(string name, IDataBlock context, string dir, string copy)
 		{
-			m_output = new OutputStack(name, dir, copy);
+			m_output = new OutputStack(name, dir, copy, isSet("InvertMerge"));
 			m_data   = new DataStack(context);
 			
 			auto block = FindBlock("<ROOT>", "ROOT", "");

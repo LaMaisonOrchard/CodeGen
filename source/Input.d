@@ -178,14 +178,25 @@ class LitteralInput : BaseInput
 			m_posn += 1;
 		}
 		
-		auto line = m_text[start .. m_posn];
-		
 		if (m_posn < m_text.length)
 		{
+			auto first = m_text[m_posn];
 			m_posn += 1;
+			
+			if (m_posn < m_text.length)
+			{
+				if ((first == '\n') && (m_text[m_posn] == '\r'))
+				{
+					m_posn += 1;
+				}
+				if ((first == '\r') && (m_text[m_posn] == '\n'))
+				{
+					m_posn += 1;
+				}
+			}
 		}
 		
-		return line;
+		return m_text[start .. m_posn];
 	}
 	
 	override char Get()

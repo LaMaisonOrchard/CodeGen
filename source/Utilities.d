@@ -94,18 +94,25 @@ public
 		return v1.Value;
 	}
 	
-	void FileMerge(string from, string to)
+	void FileMerge(string from, string to, bool invertMerge)
 	{
-		if (exists(to))
+		if (!exists(to))
+		{
+			copy(from, to);
+		}
+		else if (invertMerge)
 		{
 			string[string] userSections;
-			ReadSections(from, userSections);    // Theses are the default section from the source 
-			ReadSections(to, userSections);      // Override with the actual user sections
-			Copy(from, to, userSections);
+			ReadSections(to, userSections, "USER");      // Theses are the default section from the source 
+			ReadSections(from, userSections, "USER");    // Override with the actual user sections
+			Copy(to, to, userSections, "USER");
 		}
 		else
 		{
-			copy(from, to);
+			string[string] userSections;
+			ReadSections(from, userSections, "USER");    // Theses are the default section from the source 
+			ReadSections(to, userSections, "USER");      // Override with the actual user sections
+			Copy(from, to, userSections, "USER");
 		}
 	}
 }
@@ -866,7 +873,7 @@ private  // Copy
 {
 	
 	string[string] userSections;
-	void ReadSections(string file, ref string[string] sections)
+	void ReadSections(string file, ref string[string] sections, string type)
 	{
 		auto input = new Input.Input(file);
 		
@@ -881,7 +888,7 @@ private  // Copy
 				auto token  = split(line);
 				
 				if ((token.length >= 5) &&
-					(token[1] == "USER") &&
+					(token[1] == type) &&
 					(token[2] == "CODE"))
 				{
 					if (token[3] == "END")
@@ -890,11 +897,11 @@ private  // Copy
 					}
 					else if (token[3] == "BEGIN")
 					{
-						if ((token[4] in sections) != null)
-						{
-							writeln("Duplicate code sections : ", token[4]);
-						}
-						else
+						//if ((token[4] in sections) != null)
+						//{
+						//	writeln("Duplicate code sections : ", token[4]);
+						//}
+						//else
 						{					
 							name = token[4];
 							block.clear();
@@ -913,7 +920,7 @@ private  // Copy
 				block ~= line;
 				
 				if ((token.length >= 5) &&
-					(token[1] == "USER") &&
+					(token[1] == type) &&
 					(token[2] == "CODE"))
 				{
 					if (token[3] == "END")
@@ -932,9 +939,19 @@ private  // Copy
 		input.Close();
 	}
 	
-	void Copy(string from, string to, string[string] sections)
+	void Copy(string from, string to, string[string] sections, string type)
 	{
-		auto input  = new Input.Input(from);
+		BaseInput input = new Input.Input(from);
+		
+		// Cache the input
+		auto text = appender!(char[])();
+		while (!input.Eof())
+		{
+			text ~= input.Readln();
+		}
+		input.Close();
+		input = new LitteralInput(text[].idup());
+		
 		auto output = new FileOutput(to);
 		
 		while (!input.Eof())
@@ -946,7 +963,7 @@ private  // Copy
 				auto token  = split(line);
 				
 				if ((token.length >= 5) &&
-					(token[1] == "USER") &&
+					(token[1] == type) &&
 					(token[2] == "CODE"))
 				{
 					if (token[3] == "END")
@@ -969,7 +986,7 @@ private  // Copy
 				auto token  = split(line);
 				
 				if ((token.length >= 5) &&
-					(token[1] == "USER") &&
+					(token[1] == type) &&
 					(token[2] == "CODE"))
 				{
 					if (token[3] == "END")

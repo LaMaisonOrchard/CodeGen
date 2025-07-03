@@ -54,7 +54,7 @@ public
 			}
 		}
 		
-		void Merge(string dest)
+		void Merge(string dest, bool invertMerge)
 		{
 		}
 		
@@ -144,13 +144,13 @@ public
 			}
 		}
 		
-		override void Merge(string dest)
+		override void Merge(string dest, bool invertMerge)
 		{
 			auto from = absolutePath(m_filename, absolutePath(m_dir));
 			auto to   = absolutePath(m_filename, absolutePath(dest));
 			auto path = dirName(to);
 			mkdirRecurse(path);
-			FileMerge(from, to);
+			FileMerge(from, to, invertMerge);
 		}
 		
 		override void Close()
@@ -191,13 +191,15 @@ public
 			m_dir = ".";
 			m_copy = ".";
 			m_stack = SList!BaseOutput(output);
+			m_invertMerge = false;
 		}
 		
-		this(string name, string dir, string copy)
+		this(string name, string dir, string copy, bool invertMerge)
 		{
 			m_dir = dir;
 			m_copy = copy;
 			m_stack = SList!BaseOutput();
+			m_invertMerge = invertMerge;
 			Push(name);
 		}
 		
@@ -253,7 +255,7 @@ public
 				if (m_dir != m_copy)
 				{
 					// Merge the files
-					m_stack.front().Merge(m_copy);
+					m_stack.front().Merge(m_copy, m_invertMerge);
 				}
 				
 				m_stack.removeFront();
@@ -263,6 +265,8 @@ public
 		string m_dir;
 		string m_copy;
 		SList!BaseOutput m_stack;
+		
+		bool m_invertMerge;
 	}
 	
 }
