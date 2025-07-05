@@ -273,13 +273,11 @@ The **IDataBlock** interface defined in **Data.d** defines the following methods
 
 1. The method **string Class();** returns the CLASS or type of this data Blocks
 2. The method **string Posn();** returns a string identifying where in the data file this data block is defined.
-
-...This must be generated when parsing the data.
+This must be generated when parsing the data.
 3. The Method **bool DoBlock(BaseOutput output, string name, string subtype);** writes out The
 text from a named block with the given subtype. It returns whether the block is defined for this 
 data block.
-
-...The method **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
+The method **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
 4. The method **FormatName(*p, subtype)** returns the data block for a named **USING** reference. If the 
 data block is undefined then it return **null**.
 5. The method ** Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)** returns a named list
