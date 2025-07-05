@@ -278,9 +278,9 @@ This must be generated when parsing the data.
 text from a named block with the given subtype. It returns whether the block is defined for this 
 data block.
 The method **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
-4. The method **FormatName(*p, subtype)** returns the data block for a named **USING** reference. If the 
+4. The method **IDataBlock Using(string item);** returns the data block for a named **USING** reference. If the 
 data block is undefined then it return **null**.
-5. The method ** Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)** returns a named list
+5. The method **Tuple!(bool, DList!IDataBlock) List(bool leaf, string item);** returns a named list
 of data blocks. The first entry in the tuple indicates whether the list is defined.
 
 It is up to you to decide how your data maps on to the parse tree and what data it provides.
