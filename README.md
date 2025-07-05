@@ -65,11 +65,16 @@ My name is ![USER:(TYPE)]!
 !BLK USER:system =Fred
 ```
 
-As this stands it is quite limited. The power comes from the data file. The data file is parse and ..
+As this stands it is quite limited. The power comes from the data file. The data file is parsed and ..
 generates a parse tree of **Data Blocks** (IDataBlock). Each data block defines a number of named ..
-text blocks like simple text blocks in the template. In addition then define named data blocks referenced ..
-from the current data block. These can be accessed using the **USING** reference. The data blocks all so ..
-defines names lists of data blocks that can be iterated over using **FOREACH** and **LIST**.
+text blocks like simple text blocks in the template. In addition they define named data blocks referenced ..
+from the current data block. These can be accessed using the **USING** reference. The data blocks also ..
+defines names lists of data blocks that can be iterated over using **FOREACH** and **LIST**. ..
+All block expand in the context of a data block and has access to the blocks, data blocks and lists defined by ..
+that data block.
+The **LIST** and **FOREACH** below step through the **ENTRY** list and expand the blocks (ID and EXPAND) ..
+in the context of each entry. The **LIST** form inserts the block **COMMA** between each entry ..
+(but not at the end).
 
 ```
 !FIL ROOT file.txt
@@ -87,7 +92,7 @@ void ![NAME]!
 } !END
 ```
 
-When there is a hierarch of data blocks you can specify that you want a list of the leaf data blocks ..
+When there is a hierarchy of data blocks you can specify that you want a list of the leaf data blocks ..
 in the hiierarchy.
 
 ```
@@ -101,7 +106,7 @@ There are also a number of special reference types.
 
 ```
 !FIL ROOT file.txt
-Somthing![COL 30]!:This will be in column 
+Somthing![COL 30]!:This will be in column 30
 Somthing![TAB 10]!:This will a tabbed 10 spaces.
 !END
 ```
@@ -122,23 +127,27 @@ EVALUATE = 7*(2+3)
 
 This can be used with a special named block **SUBTYPE**. The block **SUBTYPE** is the subtype ..
 that the block was refernced with. A block with no specified subtype will match a reference ..
-with any subtype. If is the defauly block for the given named block.
+with any subtype. It is the default block for the given named block.
+Both **//** and **%%** can be used to add comment lines to the template.
 
 ```
 !FIL ROOT file.txt
 ![EXPRESSION]! = ![EVALUATE:(EXPRESSION)]! 
+none = ![EVALUATE:none]! 
 !END
 
 // This will evaluate the text and a numerical expression
 // and return the result as text
 !EVAL EVALUATE =![SUBTYPE]!
 
+!BLK EVALUATE:none =No expression
+
 EVALUATE = 7*(2+3)
 ```
 
 There a few other bits.
 * Text blocks can be included into file names in **FIL** definitions.
-* The **CONFIG** block inserts configuration values with the name of the subtype.
+* The **CONFIG** block inserts blocks (configuration) from the root data block with the name of the subtype.
 * There are some built in text blocks.
 * For names there some standard subtypes
 
@@ -149,6 +158,7 @@ namespace ![CONFIG:namespace]!
     YEAR     = ![YEAR]!
     USER     = ![USER]!
     USERNAME = ![USERNAME]!
+    TMPL     = ![TMPL]!    -- Name of the template.
     ![FILE]!        = FileName
     ![FILE:CAMEL]!  = fileName
     ![FILE:PASCAL]! = FileName

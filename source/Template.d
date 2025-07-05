@@ -7,6 +7,7 @@
 
 import std.array;
 import std.container;
+import std.path;
 import std.stdio;
 import std.uni;
 import std.format;
@@ -26,6 +27,7 @@ public
 		{
 			try
 			{
+				m_tmplName = baseName(filename, extension(filename));
 				m_error = false;
 				Parse(new InputStack(filename));
 			}
@@ -39,6 +41,7 @@ public
 		{
 			try
 			{
+				m_tmplName = "stdin";
 				m_error = false;
 				Parse(stack);
 			}
@@ -234,6 +237,12 @@ public
 							}
 							
 							output.Write(FormatName(user, subtype));
+							return true;
+						}
+						
+						case "TMPL":
+						{
+							output.Write(FormatName(m_tmplName, subtype));
 							return true;
 						}
 						
@@ -1327,6 +1336,7 @@ public
 			Block[]     m_blocks;
 			OutputStack m_output;
 			DataStack   m_data;
+			string      m_tmplName;
 			bool        m_error;
 		}
 	}
