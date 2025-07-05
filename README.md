@@ -213,13 +213,13 @@ For example:
 
 ```
 Generated code
-## USER CODE BEGIN fred harry
+// USER CODE BEGIN fred harry
 User code
-## USER CODE END fred 
+// USER CODE END fred 
 Generated code
-## USER CODE BEGIN harry
+// USER CODE BEGIN harry
 User code
-## USER CODE END harry
+// USER CODE END harry
 Generated code
 ```
 
@@ -247,13 +247,13 @@ For example:
 
 ```
 User code
-## USER GEN BEGIN fred harry
+// USER GEN BEGIN fred harry
 Generated code
-## USER GEN END fred 
+// USER GEN END fred 
 User code
-## USER GEN BEGIN harry
+// USER GEN BEGIN harry
 Generated code
-## USER GEN END harry
+// USER GEN END harry
 User code
 ```
 
@@ -274,11 +274,11 @@ The **IDataBlock** interface defined in **Data.d** defines the following methods
 
 1. The method **string Class();** returns the CLASS or type of this data Blocks
 2. The method **string Posn();** returns a string identifying where in the data file this data block is defined.
-... This must be generated when parsing the data.
+...This must be generated when parsing the data.
 3. The Method **bool DoBlock(BaseOutput output, string name, string subtype);** writes out The
 text from a named block with the given subtype. It returns whether the block is defined for this 
 data block.
-... The methos **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
+...The methos **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
 4. The method **FormatName(*p, subtype)** returns the data block for a named **USING** reference. If the 
 data block is undefined then it return **null**.
 5. The method ** Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)** returns a named list
