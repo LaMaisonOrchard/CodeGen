@@ -262,4 +262,37 @@ User code
 
 ## Creating Parse Trees
 
-To Do
+The entry point for parsing a new data format is the **ParseData(string filename)** method
+in **InputData.d**. This method uses the file suffix to identify the file format and calls
+the correct parsing routine for the data. The parser return the root **IDataBlock** instance.
+
+*This could be updated to 'snif' the file to identify its format*
+
+The JSON parser is a simple example to get you started.
+
+The **IDataBlock** interface defined in **Data.d** defines the following methods.
+
+1. The method **string Class();** returns the CLASS or type of this data Blocks
+2. The method **string Posn();** returns a string identifying where in the data file this data block is defined.
+... This must be generated when parsing the data.
+3. The Method **bool DoBlock(BaseOutput output, string name, string subtype);** writes out The
+text from a named block with the given subtype. It returns whether the block is defined for this 
+data block.
+... The methos **FormatName(text, subtype)** in **Utilities.d** can be used to apply the standard subtypes.
+4. The method **FormatName(*p, subtype)** returns the data block for a named **USING** reference. If the 
+data block is undefined then it return **null**.
+5. The method ** Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)** returns a named list
+of data blocks. The first entry in the tuple indicates whether the list is defined.
+
+It is up to you to decide how your data maps on to the parse tree and what data it provides.
+
+### Parser Support ###
+
+Your parser can use a **InputStack** defined in **Input.d**. This reads the file a character at 
+a time or a line at a time to support different parser types. In addition it supports pushing
+and poping files to support **include** statements.
+
+The **string Posn()** methos gives the current position in the input data in a convenient format for
+error reporting.
+
+
