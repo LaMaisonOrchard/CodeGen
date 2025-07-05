@@ -241,7 +241,6 @@ into the existing file.
 ....
 <token> GEN CODE END <name>  ...
 ```
-```
 
 For example:
 
