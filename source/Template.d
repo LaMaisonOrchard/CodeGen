@@ -202,6 +202,10 @@ public
 					{
 						output.Write(FormatName(callSubtype, subtype));
 					}
+					else if (name == "CLASS")
+					{
+						output.Write(FormatName(this.outer.m_data.Class(), subtype));
+					}
 					else
 					{
 						// No such block

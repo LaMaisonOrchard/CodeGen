@@ -1,13 +1,13 @@
 # CodeGen
 
 ##Introduction
-**CodeGen** template based code/text generator. The program takea a template that describes what the output ..
+**CodeGen** template based code/text generator. The program takea a template that describes what the output
 looks like and and a data file that defines what is to be generated.
 
 ** CodeGen -tmpl test.tmpl test.json **
 
-In this case the **test.tmpl** file describes what the output will look like and **test.json** is that data ..
-that is used to generate the output. Currently only JSON is supported for the data file but other formats ..
+In this case the **test.tmpl** file describes what the output will look like and **test.json** is that data
+that is used to generate the output. Currently only JSON is supported for the data file but other formats
 can be supported. 
 
 * The **-dest** switch specifies a root directory for the output (default tmp).
@@ -15,15 +15,15 @@ can be supported.
 
 ## Building
 
-**CodeGen** is platform independent code written in **D**. For further details on the lanuage see ..
+**CodeGen** is platform independent code written in **D**. For further details on the lanuage see
 [dlang](https://dlang.org/).
 
-The **test.sh** script will build and run the unittests using **dub** and then run an example command. ..
+The **test.sh** script will build and run the unittests using **dub** and then run an example command.
 The application is known to build with a recent version of both **dmd** and **ldc**.
 
 ## Templates
 
-The template files are a line based format. The basic element in a template is a named text block. ..
+The template files are a line based format. The basic element in a template is a named text block.
 The template starts with the **ROOT** block.
 
 ```
@@ -32,7 +32,7 @@ This is some text that will be output
 !END
 ```
 
-The above block will not output anything since there is no output specified. There is a special type ..
+The above block will not output anything since there is no output specified. There is a special type
 of block that specifies an output file for the block and everthing it referenes.
 
 ```
@@ -65,15 +65,16 @@ My name is ![USER:(TYPE)]!
 !BLK USER:system =Fred
 ```
 
-As this stands it is quite limited. The power comes from the data file. The data file is parsed and ..
-generates a parse tree of **Data Blocks** (IDataBlock). Each data block defines a number of named ..
-text blocks like simple text blocks in the template. In addition they define named data blocks referenced ..
-from the current data block. These can be accessed using the **USING** reference. The data blocks also ..
-defines names lists of data blocks that can be iterated over using **FOREACH** and **LIST**. ..
-All block expand in the context of a data block and has access to the blocks, data blocks and lists defined by ..
+As this stands it is quite limited. The power comes from the data file. The data file is parsed and
+generates a parse tree of **Data Blocks** (IDataBlock). Each data block defines a number of named
+text blocks like simple text blocks in the template. In addition they define named data blocks referenced
+from the current data block. These can be accessed using the **USING** reference. The data blocks also
+defines names lists of data blocks that can be iterated over using **FOREACH** and **LIST**.
+All block expand in the context of a data block and has access to the blocks, data blocks and lists defined by
 that data block.
-The **LIST** and **FOREACH** below step through the **ENTRY** list and expand the blocks (ID and EXPAND) ..
-in the context of each entry. The **LIST** form inserts the block **COMMA** between each entry ..
+
+The **LIST** and **FOREACH** below step through the **ENTRY** list and expand the blocks (ID and EXPAND)
+in the context of each entry. The **LIST** form inserts the block **COMMA** between each entry
 (but not at the end).
 
 ```
@@ -92,7 +93,7 @@ void ![NAME]!
 } !END
 ```
 
-When there is a hierarchy of data blocks you can specify that you want a list of the leaf data blocks ..
+When there is a hierarchy of data blocks you can specify that you want a list of the leaf data blocks
 in the hiierarchy.
 
 ```
@@ -101,6 +102,10 @@ in the hiierarchy.
 ![FOREACH ENTRY LEAF EXPAND]!
 !END
 ```
+
+There is a special **USING** reference called **PREV**. This switches to the previous data block. When
+the data file has a hierarchy you could implement a data block reference **PARENT** to the data block
+above the current data block in the hierarchy.
 
 There are also a number of special reference types.
 
@@ -125,9 +130,10 @@ There is a special **EVAL** block type.
 EVALUATE = 7*(2+3)
 ```
 
-This can be used with a special named block **SUBTYPE**. The block **SUBTYPE** is the subtype ..
-that the block was refernced with. A block with no specified subtype will match a reference ..
+This can be used with a special named block **SUBTYPE**. The block **SUBTYPE** is the subtype
+that the block was refernced with. A block with no specified subtype will match a reference
 with any subtype. It is the default block for the given named block.
+
 Both **//** and **%%** can be used to add comment lines to the template.
 
 ```
@@ -159,6 +165,7 @@ namespace ![CONFIG:namespace]!
     USER     = ![USER]!
     USERNAME = ![USERNAME]!
     TMPL     = ![TMPL]!    -- Name of the template.
+    CLASS    = ![CLASS]!   -- The class or type of the current data object
     ![FILE]!        = FileName
     ![FILE:CAMEL]!  = fileName
     ![FILE:PASCAL]! = FileName
@@ -176,7 +183,7 @@ namespace ![CONFIG:namespace]!
 EVALUATE = 7*(2+3)
 ```
 
-Finally the **INC** statement will include another template file into this template file. ..
+Finally the **INC** statement will include another template file into this template file.
 This is useful to keep common definitions in one place.
 
 ```
@@ -188,9 +195,70 @@ Do something
 !END
 ```
 
+### Summary ###
+Templates are programming with switch statements and recursion!
+
 ## Merging file
 
-To Do
+When merging a generated file into an existing file sections marked below are retain from the 
+existing file.
+
+```
+<token> USER CODE BEGIN <name>  ...
+....
+<token> USER CODE END <name>  ...
+```
+
+For example:
+
+```
+Generated code
+## USER CODE BEGIN fred harry
+User code
+## USER CODE END fred 
+Generated code
+## USER CODE BEGIN harry
+User code
+## USER CODE END harry
+Generated code
+```
+
+The blocks in the two files are matched using the **<name>**. This means that the Blocks
+can be reordered in the output. If a block does not exist in the existing file the generated
+version will be used.
+
+There is an **experimental** inverse merge option when the template contains the following line.
+
+```
+!SET InvertMerge true
+```
+
+In this case when merging a generated file into an existing file sections marked below are inserted
+into the existing file.
+
+```
+<token> GEN CODE BEGIN <name>  ...
+....
+<token> GEN CODE END <name>  ...
+```
+```
+
+For example:
+
+```
+User code
+## USER GEN BEGIN fred harry
+Generated code
+## USER GEN END fred 
+User code
+## USER GEN BEGIN harry
+Generated code
+## USER GEN END harry
+User code
+```
+
+## JSON Data
+
 
 ## Creating Parse Trees
 
