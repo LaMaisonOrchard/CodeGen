@@ -288,6 +288,7 @@ private
 		
 		void Add(string posn, string name, string value)
 		{
+			name = FormatName(name, "UPPER1");
 			if ((name in m_names) !is null)
 			{
 				Error(posn, "duplicate field : " ~ name);
@@ -299,6 +300,7 @@ private
 		
 		void Add(string posn, string name, IDataBlock value)
 		{
+			name = FormatName(name, "UPPER1");
 			if ((name in m_names) !is null)
 			{
 				Error(posn, "duplicate field : " ~ name);
@@ -310,6 +312,7 @@ private
 		
 		void Add(string posn, string name, IDataBlock[] value)
 		{
+			name = FormatName(name, "UPPER1");
 			if ((name in m_names) !is null)
 			{
 				Error(posn, "duplicate field : " ~ name);

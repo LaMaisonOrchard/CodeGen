@@ -103,9 +103,9 @@ public
 		else if (invertMerge)
 		{
 			string[string] userSections;
-			ReadSections(to, userSections, "USER");      // Theses are the default section from the source 
-			ReadSections(from, userSections, "USER");    // Override with the actual user sections
-			Copy(to, to, userSections, "USER");
+			ReadSections(to, userSections, "GEN");      // Theses are the default section from the source 
+			ReadSections(from, userSections, "GEN");    // Override with the actual generated sections
+			Copy(to, to, userSections, "GEN");
 		}
 		else
 		{

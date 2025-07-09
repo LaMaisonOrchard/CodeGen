@@ -1,6 +1,6 @@
 # CodeGen
 
-##Introduction
+## Introduction
 **CodeGen** template based code/text generator. The program takea a template that describes what the output
 looks like and and a data file that defines what is to be generated.
 
@@ -246,13 +246,13 @@ For example:
 
 ```
 User code
-// USER GEN BEGIN fred harry
+// GEN CODE BEGIN fred harry
 Generated code
-// USER GEN END fred 
+// GEN CODE END fred 
 User code
-// USER GEN BEGIN harry
+// GEN CODE BEGIN harry
 Generated code
-// USER GEN END harry
+// GEN CODE END harry
 User code
 ```
 
