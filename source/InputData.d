@@ -15,6 +15,7 @@ import Output;
 import Data;
 import Utilities;
 import JSON;
+import Proto;
 
 public
 {
@@ -24,6 +25,9 @@ public
 		{
 			switch(extension(filename))
 			{
+				case ".proto":
+					return ParseProto(filename);
+					
 				case ".json":
 					return ParseJson(filename);
 					

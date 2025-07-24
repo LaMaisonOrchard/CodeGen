@@ -1,0 +1,27 @@
+
+
+// This is a comment
+
+include "fred" ;
+
+type here = uint32_t;
+
+there = 345.8 ;
+
+enum billbo
+{
+   uint32_t fred = 4;
+   uint8_t biil = 1;
+}
+
+message General
+{
+	ID = 9;
+	
+	message SET
+	{
+		ID = 8;
+		billbo fred = 4;
+		here biil = 1;
+	}
+}

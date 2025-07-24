@@ -59,6 +59,19 @@ public
 		}
 	}
 	
+	bool IsValue(string text)
+	{
+		foreach (ch ; text)
+		{
+			if (!isNumber(ch))
+			{
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
 	// Format the text according to the subtype
 	string FormatValue(long value, string subtype)
 	{
