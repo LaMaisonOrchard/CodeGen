@@ -332,15 +332,19 @@ public
 					{
 						IDataBlock data = this.outer.m_data.Using(m_using);
 						
-						if (data !is null)
+						if (data is null)
+						{
+							Error(Posn(), "Invalid USING : ", m_using);
+						}
+						else
 						{
 							this.outer.m_data.Push(data);
+						
+							auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+							ExpandBlock(output, block, m_name, subtype, callSubtype);
+							
+							this.outer.m_data.Pop();
 						}
-						
-						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-						ExpandBlock(output, block, m_name, subtype, callSubtype);
-						
-						this.outer.m_data.Pop();
 					}
 				}
 				
@@ -874,6 +878,11 @@ public
 									}
 								}
 							}
+							else
+							{
+								//Nothing to do
+								i += 1;
+							}
 						}
 						else if ((line[i] == '\r') || (line[i] == '\n'))
 						{
@@ -1137,6 +1146,31 @@ public
 						return new TabRef(posn, tab);
 						
 					case "USING":
+						op = name;
+						name = "";
+						//strip white space
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
+						
+						// Get the item
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						item = (start < i)?(line[start .. i]):("");
+						
+						//strip white space
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
+						
+						// Get the name
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						name = (start < i)?(line[start .. i]):("");
+						break;
+						
 					case "FOREACH":
 						op = name;
 						name = "";
@@ -1376,6 +1410,20 @@ private
 		assert (!tmpl.isSet("harry"));
 		assert (!tmpl.isSet("unknown"));
 		assert (tmpl.HasError);
+	}
+	
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT =![FRED]!")));
+		
+		assert (!tmpl.HasError);
+	}
+	
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT =[FRED]!")));
+		
+		assert (!tmpl.HasError);
 	}
 				
 	bool IsBlockNameChar(char ch)

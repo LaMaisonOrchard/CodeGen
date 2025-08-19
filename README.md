@@ -98,8 +98,8 @@ in the hiierarchy.
 
 ```
 !FIL ROOT file.txt
-![LIST ENTRY LEAF (COMMA) ID]!
-![FOREACH ENTRY LEAF EXPAND]!
+![LIST LEAF ENTRY (COMMA) ID]!
+![FOREACH LEAF ENTRY EXPAND]!
 !END
 ```
 
