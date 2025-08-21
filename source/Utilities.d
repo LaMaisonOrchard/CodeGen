@@ -77,8 +77,24 @@ public
 	{
 		switch(subtype)
 		{
+			case ""      : return format!("%d")(value);
+			case "INT"   : return format!("%d")(value);
+			case "+INT"  : return format!("%+d")(value);
+			case "BIN4"  : return format!("%04b")(value);
+			case "BIN8"  : return format!("%08b")(value);
+			case "BIN16" : return format!("%016b")(value);
+			case "BIN24" : return format!("%024b")(value);
+			case "BIN32" : return format!("%032b")(value);
+			case "HEX2"  : return format!("%02X")(value);
+			case "HEX4"  : return format!("%04X")(value);
+			case "HEX8"  : return format!("%08X")(value);
+			case "HEX16" : return format!("%016X")(value);
+			case "hex2"  : return format!("%02x")(value);
+			case "hex4"  : return format!("%04x")(value);
+			case "hex8"  : return format!("%08x")(value);
+			case "hex16" : return format!("%016x")(value);
 			default:
-				return format("%d", value);
+				return format(subtype, value);
 		}
 	}
 	
@@ -578,7 +594,7 @@ private  // FormatName
 		
 		while (i < text.length)
 		{
-			if ((text[i] == '-') || (text[i] == '_'))
+			if ((text[i] == '-') || (text[i] == '_') || isWhite(text[i]))
 			{
 				if (start != i)
 				{
@@ -879,6 +895,68 @@ private  // FormatName
 		assert (list[1] == "World");
 		assert (list[2] == "BILL");
 		assert (list[3] == "lois");
+	}
+	
+	unittest
+	{
+		auto list = DecomposeName("hello World	BILL    lois");
+		writeln(list);
+		assert (list.length == 4);
+		assert (list[0] == "hello");
+		assert (list[1] == "World");
+		assert (list[2] == "BILL");
+		assert (list[3] == "lois");
+	}
+}
+
+private // FormatValue
+{
+	unittest
+	{
+		assert (FormatValue(10, "") == "10");
+		assert (FormatValue(-10, "") == "-10");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "INT") == "10");
+		assert (FormatValue(-10, "INT") == "-10");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "+INT") == "+10");
+		assert (FormatValue(-10, "+INT") == "-10");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "BIN4") == "1010");
+		assert (FormatValue(10, "BIN8") == "00001010");
+		assert (FormatValue(10, "BIN16") == "0000000000001010");
+		assert (FormatValue(10, "BIN24") == "000000000000000000001010");
+		assert (FormatValue(10, "BIN32") == "00000000000000000000000000001010");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "HEX2") == "0A");
+		assert (FormatValue(10, "HEX4") == "000A");
+		assert (FormatValue(10, "HEX8") == "0000000A");
+		assert (FormatValue(10, "HEX16") == "000000000000000A");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "hex2") == "0a");
+		assert (FormatValue(10, "hex4") == "000a");
+		assert (FormatValue(10, "hex8") == "0000000a");
+		assert (FormatValue(10, "hex16") == "000000000000000a");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(0xA000, "HEX2") == "A000");
 	}
 }
 

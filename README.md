@@ -4,7 +4,7 @@
 **CodeGen** template based code/text generator. The program takea a template that describes what the output
 looks like and and a data file that defines what is to be generated.
 
-** CodeGen -tmpl test.tmpl test.json **
+**CodeGen -tmpl test.tmpl test.json**
 
 In this case the **test.tmpl** file describes what the output will look like and **test.json** is that data
 that is used to generate the output. Currently only JSON is supported for the data file but other formats
