@@ -61,6 +61,14 @@ public
 	
 	bool IsValue(string text)
 	{
+		if ((text.length > 0) &&
+		    ((text[0] == '+') || (text[0] == '-')))
+		{
+			text = text[1..$];
+		}
+		
+		if (text.length == 0) return false;
+		
 		foreach (ch ; text)
 		{
 			if (!isNumber(ch))
@@ -906,6 +914,24 @@ private  // FormatName
 		assert (list[1] == "World");
 		assert (list[2] == "BILL");
 		assert (list[3] == "lois");
+	}
+}
+
+private // IsValue
+{
+	unittest
+	{
+		assert (IsValue("0"));
+		assert (IsValue("1"));
+		assert (IsValue("+1"));
+		assert (IsValue("-1"));
+		assert (IsValue("123456789"));
+		
+		assert (!IsValue(""));
+		assert (!IsValue("    "));
+		assert (!IsValue(" 1"));
+		assert (!IsValue("1 "));
+		assert (!IsValue("1F"));
 	}
 }
 
