@@ -126,7 +126,7 @@ public
 			}
 		}
 		
-		if (text.length > 0) new EvalException("Invalid expression");
+		if (text.length > 0) throw new EvalException("Invalid expression");
 		
 		return v1.Value;
 	}
@@ -230,10 +230,21 @@ private  // Evaluate
 		}
 		else
 		{
-			if ((i < text.length) && (text[i] == '-'))
+			if (i < text.length)
 			{
-				sign = -1;
-				i += 1;
+				if (text[i] == '-')
+				{
+					sign = -1;
+					i += 1;
+				}
+				else if (text[i] == '+')
+				{
+					i += 1;
+				}
+				else
+				{
+					// Not a sign prefix
+				}
 			}
 			
 			if ((i >= text.length) || !isNumber(text[i]))
@@ -479,6 +490,30 @@ private  // Evaluate
 	{
 		string text = "(8*3/4)";
 		assert(Evaluate(text) == 8*3/4);
+	}
+	
+	unittest
+	{
+		string text = "-81";
+		assert(Evaluate(text) == -81);
+	}
+	
+	unittest
+	{
+		string text = "+81";
+		assert(Evaluate(text) == 81);
+	}
+	
+	unittest
+	{
+		string text = "81";
+		assert(Evaluate(text) == 81);
+	}
+	
+	unittest
+	{
+		string text = "-4 + +9";
+		assert(Evaluate(text) == 5);
 	}
 	
 	unittest

@@ -5,7 +5,7 @@
 ![YEAR]! == ![USER]!
 Hello World  ![NAME:me]!![COL 10]!<<
 What are you ![TAB 5]!doing
-to day. ![COL 10]!(![NUM]!)
+to day. ![COL 10]!(![NUM]! + ![IDX1]!)
 
 ![OUTPUT:file]!
 
@@ -28,4 +28,6 @@ Generated code
 
 !BLK NAME =David Orchard(![TYPE]!)
 
-!BLK FRED=![USING BILL LOIS]!
+!EVAL IDX1= ![IDX]! + 1
+
+!BLK FRED=![USING BILL LOIS]!(![IDX1]!)

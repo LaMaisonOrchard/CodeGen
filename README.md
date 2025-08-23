@@ -93,6 +93,8 @@ void ![NAME]!
 } !END
 ```
 
+The block **IDX** expands to (zero based) index of the current loop.
+
 When there is a hierarchy of data blocks you can specify that you want a list of the leaf data blocks
 in the hiierarchy.
 
@@ -161,11 +163,12 @@ There a few other bits.
 !FIL ROOT (FILE).txt
 namespace ![CONFIG:namespace]! 
 {
-    YEAR     = ![YEAR]!
-    USER     = ![USER]!
-    USERNAME = ![USERNAME]!
-    TMPL     = ![TMPL]!    -- Name of the template.
-    CLASS    = ![CLASS]!   -- The class or type of the current data object
+    YEAR            = ![YEAR]!
+    USER            = ![USER]!
+    USERNAME        = ![USERNAME]!
+    TMPL            = ![TMPL]!           -- Name of the template.
+    CLASS           = ![CLASS]!          -- The class or type of the current data object
+    TMPL_VERSION    = ![TMPL_VERSION]!   -- Template version
     ![FILE]!        = FileName
     ![FILE:CAMEL]!  = fileName
     ![FILE:PASCAL]! = FileName
@@ -175,6 +178,22 @@ namespace ![CONFIG:namespace]!
     ![FILE:UPPER2]! = FILE-NAME
     ![FILE:LOWER2]! = file-name
     ![FILE:KEBAB]!  = file-name
+    ![VALUE]!       = 26
+    ![VALUE:INT]!   = 26                  -- For text that can be interpreted as a value.
+    ![VALUE:+INT]!  = +26                 -- For text that can be interpreted as a value.
+    ![VALUE:BIN4]!  = 11010               -- For text that can be interpreted as a value.
+    ![VALUE:BIN8]!  = 00011010            -- For text that can be interpreted as a value.
+    ![VALUE:BIN16]! = 0...0               -- For text that can be interpreted as a value.
+    ![VALUE:BIN24]! = 0...0               -- For text that can be interpreted as a value.
+    ![VALUE:BIN32]! = 0...0               -- For text that can be interpreted as a value.
+    ![VALUE:HEX2]!  = 1A                  -- For text that can be interpreted as a value.
+    ![VALUE:HEX4]!  = 001A                -- For text that can be interpreted as a value.
+    ![VALUE:HEX8]!  = 0000001A            -- For text that can be interpreted as a value.
+    ![VALUE:HEX16]! = 0...1A              -- For text that can be interpreted as a value.
+    ![VALUE:hex2]!  = 1a                  -- For text that can be interpreted as a value.
+    ![VALUE:hex4]!  = 001a                -- For text that can be interpreted as a value.
+    ![VALUE:hex8]!  = 0000001a            -- For text that can be interpreted as a value.
+    ![VALUE:hex16]! = 0...1a              -- For text that can be interpreted as a value.
 }
 !END
 

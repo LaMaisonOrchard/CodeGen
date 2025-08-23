@@ -19,6 +19,8 @@ import Output;
 import Data;
 import Utilities;
 
+enum string VERSION = "1.0.0";
+
 public
 {	
 	final class Template
@@ -206,6 +208,10 @@ public
 					{
 						output.Write(FormatName(this.outer.m_data.Class(), subtype));
 					}
+					else if (name == "IDX")
+					{
+						output.Write(FormatValue(this.outer.m_data.Idx(), subtype));
+					}
 					else
 					{
 						// No such block
@@ -247,6 +253,12 @@ public
 						case "TMPL":
 						{
 							output.Write(FormatName(m_tmplName, subtype));
+							return true;
+						}
+						
+						case "TMPL_VERSION":
+						{
+							output.Write(VERSION);
 							return true;
 						}
 						
@@ -307,26 +319,26 @@ public
 				{
 					string subtype = "";
 					
-					if (m_subtype !is null)
-					{
-						auto text = new TextOutput();
-						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack, callSubtype);
-						subtype = text.Text();
-						stack.Close();
-					}
-					
 					if (m_using == "PREV")
 					{
-						IDataBlock data = this.outer.m_data.Pop();
-						
-						auto block = this.outer.FindBlock(Posn(), m_name, subtype);
-						ExpandBlock(output, block, m_name, subtype, callSubtype);
-						
-						if (data !is null)
+						auto data = this.outer.m_data.Pop();
+					
+						if (data.Data !is null)
 						{
+							if (m_subtype !is null)
+							{
+								auto text = new TextOutput();
+								auto stack  = new OutputStack(text);
+								m_subtype.Generate(stack, callSubtype);
+								subtype = text.Text();
+								stack.Close();
+							}
+							
+							auto block = this.outer.FindBlock(Posn(), m_name, subtype);
+							ExpandBlock(output, block, m_name, subtype, callSubtype);
+						
 							this.outer.m_data.Push(data);
-						}						
+						}
 					}
 					else
 					{
@@ -338,7 +350,16 @@ public
 						}
 						else
 						{
-							this.outer.m_data.Push(data);
+							this.outer.m_data.Push(data, this.outer.m_data.Idx());
+					
+							if (m_subtype !is null)
+							{
+								auto text = new TextOutput();
+								auto stack  = new OutputStack(text);
+								m_subtype.Generate(stack, callSubtype);
+								subtype = text.Text();
+								stack.Close();
+							}
 						
 							auto block = this.outer.FindBlock(Posn(), m_name, subtype);
 							ExpandBlock(output, block, m_name, subtype, callSubtype);
@@ -371,15 +392,6 @@ public
 					string subtype = "";
 					string sep     = "";
 					
-					if (m_subtype !is null)
-					{
-						auto text = new TextOutput();
-						auto stack  = new OutputStack(text);
-						m_subtype.Generate(stack, subtype);
-						subtype = text.Text();
-						stack.Close();
-					}
-					
 					if (m_sep !is null)
 					{
 						auto text = new TextOutput();
@@ -389,15 +401,26 @@ public
 						stack.Close();
 					}
 					
-					auto block = this.outer.FindBlock(Posn(), m_name, subtype);
 					auto list  = this.outer.m_data.List(m_leaf, m_using);
 					
 					if (list[0])
 					{
 						bool first = true;
+						long idx   = 0;
 						foreach (data ; list[1])
 						{
-							this.outer.m_data.Push(data);
+							this.outer.m_data.Push(data, idx);
+					
+							if (m_subtype !is null)
+							{
+								auto text = new TextOutput();
+								auto stack  = new OutputStack(text);
+								m_subtype.Generate(stack, subtype);
+								subtype = text.Text();
+								stack.Close();
+							}
+
+							auto block = this.outer.FindBlock(Posn(), m_name, subtype);
 						
 							if (!first)
 							{
@@ -408,6 +431,8 @@ public
 							first = false;
 							
 							this.outer.m_data.Pop();
+							
+							idx += 1;
 						}
 					}
 					else
@@ -463,8 +488,7 @@ public
 				
 				final bool Match(string name, string subtype)
 				{
-					return (m_name == name) &&
-						   ((m_subtype is null) || (m_subtype == "") || (m_subtype == subtype));
+					return ((m_name == name) && (m_subtype == subtype));
 				}
 				
 				final void Generate(OutputStack output)
@@ -1329,7 +1353,7 @@ public
 					}
 					else if (existing.SubType() != block.SubType())
 					{
-						Error(posn, "Masked block definition : ", block.Ref(), " masked by ", existing.Posn(), existing.Ref());
+						m_blocks ~= block;
 					}
 					else
 					{
@@ -1344,6 +1368,14 @@ public
 				foreach (block ; m_blocks)
 				{
 					if (block.Match(name, subtype))
+					{
+						return block;
+					}
+				}
+				
+				foreach (block ; m_blocks)
+				{
+					if (block.Match(name, ""))
 					{
 						return block;
 					}

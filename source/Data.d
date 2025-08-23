@@ -100,7 +100,7 @@ public
 		this(IDataBlock data)
 		{
 			assert(data !is null);
-			m_stack = SList!IDataBlock(data);
+			m_stack = SList!Entry(Entry(data, 0));
 			m_root  = data;
 		}
 		
@@ -113,7 +113,7 @@ public
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().Class();
+				return m_stack.front().Data().Class();
 			}
 			else
 			{
@@ -125,7 +125,7 @@ public
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().Posn();
+				return m_stack.front().Data().Posn();
 			}
 			else
 			{
@@ -138,7 +138,7 @@ public
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().DoBlock(output, name, subtype);
+				return m_stack.front().Data().DoBlock(output, name, subtype);
 			}
 			else
 			{
@@ -152,7 +152,7 @@ public
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().Using(item);
+				return m_stack.front().Data().Using(item);
 			}
 			else
 			{
@@ -166,7 +166,7 @@ public
 		{
 			if (!m_stack.empty())
 			{
-				return m_stack.front().List(leaf, item);
+				return m_stack.front().Data().List(leaf, item);
 			}
 			else
 			{
@@ -175,14 +175,31 @@ public
 			}
 		}
 		
-		void Push(IDataBlock data)
+		long Idx()
 		{
-			m_stack.insert(data);
+			if (!m_stack.empty())
+			{
+				return m_stack.front().Idx();
+			}
+			else
+			{
+				return 0;
+			}
 		}
 		
-		IDataBlock Pop()
+		void Push(IDataBlock data, long idx)
 		{
-			IDataBlock data;
+			m_stack.insert(Entry(data, idx));
+		}
+		
+		void Push(Entry entry)
+		{
+			m_stack.insert(entry);
+		}
+		
+		Entry Pop()
+		{
+			Entry data;
 			
 			if (!m_stack.empty())
 			{
@@ -193,18 +210,34 @@ public
 			return data;
 		}
 		
+		struct Entry
+		{
+			this(IDataBlock data, long idx)
+			{
+				m_data = data;
+				m_idx  = idx;
+			}
+			
+			IDataBlock Data() {return m_data;}
+			long       Idx()  {return m_idx;}
+			
+			IDataBlock m_data;
+			long m_idx;
+		}
+		
 		override void Dump(BaseOutput file)
 		{
 			if (!m_stack.empty())
 			{
-				m_stack.front().Dump(file);
+				m_stack.front().Data().Dump(file);
 			}
 		}
 		
 		private
 		{
-			SList!IDataBlock m_stack;
-			IDataBlock       m_root;
+			
+			SList!Entry m_stack;
+			IDataBlock  m_root;
 		}
 	}
 }
