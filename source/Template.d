@@ -226,7 +226,42 @@ public
 						case "YEAR":
 						{
 							auto now = Clock.currTime();
-							output.Write(format("%d", now.year()));
+							output.Write(FormatValue(now.year(), subtype));
+							return true;
+						}
+						
+						case "MONTH":
+						{
+							auto now = Clock.currTime();
+							output.Write(FormatValue(now.month(), subtype));
+							return true;
+						}
+						
+						case "DAY":
+						{
+							auto now = Clock.currTime();
+							output.Write(FormatValue(now.day(), subtype));
+							return true;
+						}
+						
+						case "HOUR":
+						{
+							auto now = Clock.currTime();
+							output.Write(FormatValue(now.hour(), subtype));
+							return true;
+						}
+						
+						case "MINUTE":
+						{
+							auto now = Clock.currTime();
+							output.Write(FormatValue(now.minute(), subtype));
+							return true;
+						}
+						
+						case "SECOND":
+						{
+							auto now = Clock.currTime();
+							output.Write(FormatValue(now.second(), subtype));
 							return true;
 						}
 						
@@ -575,7 +610,7 @@ public
 					try
 					{
 						auto value = Evaluate(text);
-						output.Write(FormatValue(value, m_subtype));
+						output.Write(FormatValue(value, callSubtype));
 					}
 					catch (EvalException ex)
 					{

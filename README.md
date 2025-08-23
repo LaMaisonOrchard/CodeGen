@@ -180,7 +180,11 @@ namespace ![CONFIG:namespace]!
     ![FILE:KEBAB]!  = file-name
     ![VALUE]!       = 26
     ![VALUE:INT]!   = 26                  -- For text that can be interpreted as a value.
+    ![VALUE:INT2]!  = 26                  -- For text that can be interpreted as a value.
+    ![VALUE:INT4]!  = 0026                -- For text that can be interpreted as a value.
     ![VALUE:+INT]!  = +26                 -- For text that can be interpreted as a value.
+    ![VALUE:+INT2]! = +26                 -- For text that can be interpreted as a value.
+    ![VALUE:+INT4]! = +026                -- For text that can be interpreted as a value.
     ![VALUE:BIN4]!  = 11010               -- For text that can be interpreted as a value.
     ![VALUE:BIN8]!  = 00011010            -- For text that can be interpreted as a value.
     ![VALUE:BIN16]! = 0...0               -- For text that can be interpreted as a value.

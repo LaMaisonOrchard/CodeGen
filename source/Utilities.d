@@ -87,7 +87,11 @@ public
 		{
 			case ""      : return format!("%d")(value);
 			case "INT"   : return format!("%d")(value);
+			case "INT2"  : return format!("%02d")(value);
+			case "INT4"  : return format!("%04d")(value);
 			case "+INT"  : return format!("%+d")(value);
+			case "+INT2" : return format!("%+02d")(value);
+			case "+INT4" : return format!("%+04d")(value);
 			case "BIN4"  : return format!("%04b")(value);
 			case "BIN8"  : return format!("%08b")(value);
 			case "BIN16" : return format!("%016b")(value);
@@ -986,8 +990,32 @@ private // FormatValue
 	
 	unittest
 	{
+		assert (FormatValue(7, "INT2") == "07");
+		assert (FormatValue(-7, "INT2") == "-7");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(7, "INT4") == "0007");
+		assert (FormatValue(-7, "INT4") == "-007");
+	}
+	
+	unittest
+	{
 		assert (FormatValue(10, "+INT") == "+10");
 		assert (FormatValue(-10, "+INT") == "-10");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(7, "+INT2") == "+7");
+		assert (FormatValue(-7, "+INT2") == "-7");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(7, "+INT4") == "+007");
+		assert (FormatValue(-7, "+INT4") == "-007");
 	}
 	
 	unittest

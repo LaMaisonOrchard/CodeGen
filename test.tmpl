@@ -2,16 +2,20 @@
 !INC test2.tmpl
 
 !BLK ROOT
-![YEAR]! == ![USER]!
+![YEAR]!:![MONTH:INT2]!:![DAY:INT2]! == ![USER]!
 Hello World  ![NAME:me]!![COL 10]!<<
 What are you ![TAB 5]!doing
 to day. ![COL 10]!(![NUM]! + ![IDX1]!)
+
+>>![SHORT:INT4]!<<
 
 ![OUTPUT:file]!
 
 ![LIST ENTRY (COMMA) FRED]!
 
 !END
+
+!EVAL SHORT= ![YEAR]! % 100
 
 !FIL OUTPUT:file fred/out.txt
 ![SUBTYPE:UPPER1]!
