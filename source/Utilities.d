@@ -18,7 +18,7 @@ public
 {
 	class EvalException : Exception
 	{
-		this(string msg)
+		pure this(string msg)
 		{
 			super(msg);
 		}
@@ -30,7 +30,7 @@ public
 	}
 	
 	// Format the text according to the subtype
-	string FormatName(string text, string subtype)
+	pure string FormatName(string text, string subtype)
 	{
 		switch(subtype)
 		{
@@ -59,7 +59,7 @@ public
 		}
 	}
 	
-	bool IsValue(string text)
+	pure bool IsValue(string text)
 	{
 		if ((text.length > 0) &&
 		    ((text[0] == '+') || (text[0] == '-')))
@@ -81,7 +81,7 @@ public
 	}
 	
 	// Format the text according to the subtype
-	string FormatValue(long value, string subtype)
+	pure string FormatValue(long value, string subtype)
 	{
 		switch(subtype)
 		{
@@ -110,7 +110,7 @@ public
 		}
 	}
 	
-	long Evaluate(string text)
+	pure long Evaluate(string text)
 	{
 		auto v1 = EvaluateValue(text);
 		 
@@ -162,17 +162,17 @@ private  // Evaluate
 {
 	interface IValue
 	{
-		long Value();
+		pure long Value();
 	}
 	
 	class Value : IValue
 	{
-		this (long v1)
+		pure this (long v1)
 		{
 			m_value = v1;
 		}
 		
-		override long Value()
+		pure final long Value()
 		{
 			return m_value;
 		}
@@ -182,14 +182,14 @@ private  // Evaluate
 	
 	class ValueOp : IValue
 	{
-		this (char op, IValue v1, IValue v2)
+		pure this (char op, IValue v1, IValue v2)
 		{
 			m_op = op;
 			m_v1 = v1;
 			m_v2 = v2;
 		}
 		
-		override long Value()
+		pure final long Value()
 		{
 			switch (m_op)
 			{
@@ -218,7 +218,7 @@ private  // Evaluate
 		private IValue m_v2;
 	}
 	
-	IValue EvaluateValue(ref string text)
+	pure IValue EvaluateValue(ref string text)
 	{
 		long value = 0;
 		long sign = 1;
@@ -270,7 +270,7 @@ private  // Evaluate
 		}
 	}
 	
-	IValue EvaluateBrackets(ref string text)
+	pure IValue EvaluateBrackets(ref string text)
 	{
 		auto v1 = EvaluateValue(text);
 		 
@@ -306,7 +306,7 @@ private  // Evaluate
 		return v1;
 	}
 	
-	IValue EvaluateSum(IValue v1, ref string text)
+	pure IValue EvaluateSum(IValue v1, ref string text)
 	{
 		assert(text.length >0);
 		
@@ -344,7 +344,7 @@ private  // Evaluate
 		return v1;
 	}
 	
-	IValue EvaluateMulti(IValue v1, ref string text)
+	pure IValue EvaluateMulti(IValue v1, ref string text)
 	{
 		assert(text.length >0);
 		
@@ -614,7 +614,7 @@ private  // Evaluate
 private  // FormatName
 {
 	// Identify the type of formatting and decompose into the elements
-	string[] DecomposeName(string text)
+	pure string[] DecomposeName(string text)
 	{
 		string[] list;
 		
@@ -632,7 +632,7 @@ private  // FormatName
 	}
 	
 	// Split on under scrore or hiphen
-	string[] DecomposeName1(string text)
+	pure string[] DecomposeName1(string text)
 	{
 		string[] list;
 		
@@ -665,7 +665,7 @@ private  // FormatName
 	}
 	
 	// Split on upper case
-	string[] DecomposeName2(string text)
+	pure string[] DecomposeName2(string text)
 	{
 		string[] list;
 		
@@ -705,7 +705,7 @@ private  // FormatName
 		return list;
 	}
 	
-	string BuildCamel(string[] parts)
+	pure string BuildCamel(string[] parts)
 	{
 		Appender!(char[]) text;
 		
@@ -734,7 +734,7 @@ private  // FormatName
 		return text[].idup;
 	}
 	
-	string BuildPascal(string[] parts)
+	pure string BuildPascal(string[] parts)
 	{
 		Appender!(char[]) text;
 		
@@ -758,7 +758,7 @@ private  // FormatName
 		return text[].idup;
 	}
 	
-	string BuildUpper1(string[] parts)
+	pure string BuildUpper1(string[] parts)
 	{
 		Appender!(char[]) text;
 		
@@ -780,7 +780,7 @@ private  // FormatName
 		return text[].idup;
 	}
 	
-	string BuildLower1(string[] parts)
+	pure string BuildLower1(string[] parts)
 	{
 		Appender!(char[]) text;
 		
@@ -802,7 +802,7 @@ private  // FormatName
 		return text[].idup;
 	}
 	
-	string BuildUpper2(string[] parts)
+	pure string BuildUpper2(string[] parts)
 	{
 		Appender!(char[]) text;
 		
@@ -824,7 +824,7 @@ private  // FormatName
 		return text[].idup;
 	}
 	
-	string BuildLower2(string[] parts)
+	pure string BuildLower2(string[] parts)
 	{
 		Appender!(char[]) text;
 		
