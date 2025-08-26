@@ -164,6 +164,11 @@ There a few other bits.
 namespace ![CONFIG:namespace]! 
 {
     YEAR            = ![YEAR]!
+    MONTH           = ![MONTH]!
+    DAY             = ![DAY]!
+    HOUR            = ![HOUR]!
+    MINUTE          = ![MINUTE]!
+    SECOND          = ![SECOND]!
     USER            = ![USER]!
     USERNAME        = ![USERNAME]!
     TMPL            = ![TMPL]!           -- Name of the template.

@@ -106,7 +106,7 @@ public
 			case "hex8"  : return format!("%08x")(value);
 			case "hex16" : return format!("%016x")(value);
 			default:
-				return format(subtype, value);
+				return format("%d", value);
 		}
 	}
 	
@@ -980,6 +980,12 @@ private // FormatValue
 	{
 		assert (FormatValue(10, "") == "10");
 		assert (FormatValue(-10, "") == "-10");
+	}
+	
+	unittest
+	{
+		assert (FormatValue(10, "FRED") == "10");
+		assert (FormatValue(-10, "FRED") == "-10");
 	}
 	
 	unittest
