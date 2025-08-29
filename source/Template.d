@@ -864,14 +864,13 @@ public
 					i += 1;
 					start = i;
 					while ((i < line.length) && 
-							(isAlphaNum(line[i]) ||
-							(line[i] == '_') ||
-							(line[i] == '-')))
+							!isWhite(line[i]) &&
+							(line[i] != '='))
 					{
 						i += 1;
 					}
 					
-					if ((i < line.length) && !isWhite(line[i]))
+					if ((i < line.length) && !isWhite(line[i]) && (line[i] != '='))
 					{
 						//Illeghal Subtype
 						Error(posn, "Missing illegal subtype : ", line);
@@ -1485,12 +1484,87 @@ private
 		
 		assert (!tmpl.HasError);
 	}
-	
+
 	unittest
 	{
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT =[FRED]!")));
-		
+
 		assert (!tmpl.HasError);
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT=FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "");
+		assert(block !is null);
+
+		auto data = new TextOutput();
+		auto output = new OutputStack(data);
+		block.Generate(output);
+		assert(data.Text() == "FRED");
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT = FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "");
+		assert(block !is null);
+
+		auto data = new TextOutput();
+		auto output = new OutputStack(data);
+		block.Generate(output);
+		assert(data.Text() == " FRED");
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill=FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "Bill");
+		assert(block !is null);
+
+		auto data = new TextOutput();
+		auto output = new OutputStack(data);
+		block.Generate(output);
+		assert(data.Text() == "FRED");
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill==FRED=")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "Bill");
+		assert(block !is null);
+
+		auto data = new TextOutput();
+		auto output = new OutputStack(data);
+		block.Generate(output);
+		assert(data.Text() == "=FRED=");
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:?<>£$%^&*()!#@{}[]=FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "?<>£$%^&*()!#@{}[]");
+		assert(block !is null);
+
+		auto data = new TextOutput();
+		auto output = new OutputStack(data);
+		block.Generate(output);
+		assert(data.Text() == "FRED");
 	}
 				
 	bool IsBlockNameChar(char ch)
