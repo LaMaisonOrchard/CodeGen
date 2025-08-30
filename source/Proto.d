@@ -5,6 +5,7 @@
 //
 @safe:
 
+import std.conv;
 import std.container;
 import std.stdio;
 import std.array;
@@ -15,6 +16,7 @@ import Input;
 import Output;
 import Data;
 import Utilities;
+import std.algorithm.searching;
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -51,8 +53,6 @@ public
 	{
 		auto      input = new Tokenise(new InputStack(name));
 		ProtoBlock root  = null;
-		
-		Token token = input.Get();
 			
 		root = new ProtoBlock(input);
 		
@@ -97,16 +97,7 @@ private
 		// Get a sub-item of this data item
 		override IDataBlock Using(string item)
 		{
-			auto p = item in m_using;
-			
-			if (p is null)
-			{
-				return null;
-			}
-			else
-			{
-				return *p;
-			}
+			return null;
 		}
 		
 		// Get a sub-item of this data item
@@ -116,7 +107,7 @@ private
 			
 			if (p is null)
 			{
-				return tuple(false, DList!IDataBlock());   // Allow missing lists
+				return tuple(false, DList!IDataBlock());
 			}
 			else
 			{
@@ -127,26 +118,37 @@ private
 		// Expand the block as defined by the data object
 		override bool DoBlock(BaseOutput output, string name, string subtype)
 		{
-			auto p = name in m_blocks;
+			if (name[$-1] == 'S')
+			{
+				auto p = name[0..$-1] in m_list;
+				if (p !is null)
+				{
+					output.Write(FormatValue((*p).length, subtype));
+					return true;
+				}
+			}
+
+			auto p = name in m_textBlocks;
 			
 			if (p is null)
 			{
-				return false;
+				p = name in m_valueBlocks;
+				if (p is null)
+				{
+					return false;
+				}
+				else
+				{
+					string value = *p;
+					output.Write(FormatValue(Evaluate(value), subtype));
+					return true;
+				}
 			}
 			else
 			{
 				string value = *p;
-				
-				if (IsValue(value))
-				{
-					output.Write(FormatValue(Evaluate(value), subtype));
-					return true;
-				}
-				else
-				{
-					output.Write(FormatName(value, subtype));
-					return true;
-				}
+				output.Write(FormatName(value, subtype));
+				return true;
 			}
 		}
 		
@@ -170,6 +172,10 @@ private
 				{
 					ParseObjectDefn(input);
 				}
+				else if (token.type == Type.INCLUDE)
+				{
+					ParseInclude(input);
+				}
 				else if (token.type == Type.NAME)
 				{
 					auto name = token;
@@ -179,30 +185,20 @@ private
 					{
 						ParseAsign(name, input);
 					}
-					else if (token.type == Type.OPEN_BRACE)
-					{
-						ParseList(name, input);
-					}
 					else if (token.type == Type.NAME)
 					{
 						ParseObject(name, token, input);
 					}
 					else
 					{
-						Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
-						while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-						{
-							token = input.Get();
-						}
+						Error(token.posn, "Unexpected token : [" ~ token.text ~ "]" ~ to!string(token.type));
+						StripStatement(input, token);
 					}
 				}
 				else
 			    {
-					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
-					while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-					{
-						token = input.Get();
-					}
+					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]" ~ to!string(token.type));
+					StripStatement(input, token);
 			    }
 
 			    token = input.Get();
@@ -257,18 +253,42 @@ private
 			if (token.type != Type.END_STATEMENT)
 			{
 				Error(token.posn, "Unterminated object definition statement (expected ; )");
-				while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-				{
-					token = input.Get();
-				}
+				StripStatement(input, token);
+			}
+		}
+
+		void ParseInclude(Tokenise input)
+		{
+			auto token = input.Get();
+
+			if ((token.type != Type.NAME) &&
+			    (token.type != Type.TEXT))
+			{
+				Error(token.posn, "Illegal include file : " ~ token.text);
+			}
+			else
+			{
+				input.Push(token.text);
+			}
+
+			token = input.Get();
+			if (token.type != Type.END_STATEMENT)
+			{
+				Error(token.posn, "Unterminated include statement (expected ; )");
+				StripStatement(input, token);
 			}
 		}
 
 		void ParseAsign(Token name, Tokenise input)
 		{
 			auto token = input.Get();
-			if ((token.type != Type.NAME)  ||
-			    (token.type != Type.VALUE) ||
+			if (token.type == Type.OPEN_BRACE)
+			{
+				ParseList(name, input);
+				return;
+			}
+			else if ((token.type != Type.NAME)  &&
+			    (token.type != Type.VALUE) &&
 			    (token.type != Type.TEXT))
 			{
 				Error(token.posn, "Missing asignment value (expected <name> | <value> | <text> )");
@@ -286,10 +306,7 @@ private
 			if (token.type != Type.END_STATEMENT)
 			{
 				Error(token.posn, "Unterminated asignment statement (expected ; )");
-				while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-				{
-					token = input.Get();
-				}
+				StripStatement(input, token);
 			}
 		}
 
@@ -297,24 +314,21 @@ private
 		{
 			auto token = input.Get();
 
-			string[] list;
+			IDataBlock[] list;
 
 			if (token.type == Type.VALUE)
 			{
 				// Value list
 				while (token.type == Type.VALUE)
 				{
-					list ~= token.text;
+					list ~= new ValueObj(token.text);
 					token = input.Get();
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
 				{
 					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
-					while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-					{
-						token = input.Get();
-					}
+					StripStatement(input, token);
 				}
 				else
 				{
@@ -322,14 +336,11 @@ private
 					if (token.type != Type.END_STATEMENT)
 					{
 						Error(token.posn, "Unterminated list statement (expected ; )");
-						while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-						{
-							token = input.Get();
-						}
+						StripStatement(input, token);
 					}
 					else
 					{
-						AddValueList(name.text, list);
+						AddList(name.text, list);
 					}
 				}
 			}
@@ -340,17 +351,14 @@ private
 				while ((token.type == Type.NAME) ||
 			           (token.type == Type.TEXT))
 				{
-					list ~= token.text;
+					list ~= new TextObj(token.text);
 					token = input.Get();
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
 				{
 					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
-					while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-					{
-						token = input.Get();
-					}
+					StripStatement(input, token);
 				}
 				else
 				{
@@ -358,24 +366,18 @@ private
 					if (token.type != Type.END_STATEMENT)
 					{
 						Error(token.posn, "Unterminated list statement (expected ; )");
-						while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-						{
-							token = input.Get();
-						}
+						StripStatement(input, token);
 					}
 					else
 					{
-						AddValueList(name.text, list);
+						AddList(name.text, list);
 					}
 				}
 			}
 			else
 			{
 				Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
-				while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
-				{
-					token = input.Get();
-				}
+				StripStatement(input, token);
 			}
 
 		}
@@ -390,7 +392,7 @@ private
 			}
 			else
 			{
-				auto obj = new DataObject(this, input, classDefn, name);
+				auto obj = new DataObject(this, this, input, classDefn, name);
 
 				if (obj.HasError)
 				{
@@ -406,49 +408,62 @@ private
 
 		void AddDefinition(string parent, string child)
 		{
-			writeln("Add defn ==> ", parent, " :: ", child);
+			m_defns ~= Defn(parent, child);
 		}
 
 		bool IsValid(string parent, string child)
 		{
-			return true;
+			return canFind(m_defns, Defn(parent, child));
 		}
 
 		void AsignValue(string name, string value)
 		{
-			writeln(name, " ==> ", value);
+			m_valueBlocks[FormatName(name, "UPPER1")] = value;
 		}
 
 		void AsignText(string name, string value)
 		{
-			writeln(name, " ==> ", value);
+			m_textBlocks[FormatName(name, "UPPER1")] = value;
 		}
 
-		void AddValueList(string name, string[] list)
+		void AddList(string name, IDataBlock[] list)
 		{
-			writeln("Value list ==> ", name);
+			m_list[FormatName(name, "UPPER1")] = list;
 		}
 
-		void AddTextList(string name, string[] list)
+		struct Defn
 		{
-			writeln("Text list ==> ", name);
+			string parent;
+			string child;
 		}
+
+		Defn[] m_defns;
 		
-		string[string]       m_blocks;
-		IDataBlock[string]   m_using;
+		string[string]       m_textBlocks;
+		string[string]       m_valueBlocks;
 		IDataBlock[][string] m_list;
 		
 		string m_posn;
 		bool   m_error;
 	}
 
+	void StripStatement(Tokenise input, Token token)
+	{
+		while ((token.type != Type.END_STATEMENT) && (token.type != Type.EOF))
+		{
+			token = input.Get();
+		}
+	}
+
 	class DataObject : IDataBlock
 	{
-		this(ProtoBlock root, Tokenise input, Token className, Token name)
+		this(ProtoBlock root, IDataBlock owner, Tokenise input, Token className, Token name)
 		{
-			m_posn = name.posn;
+			m_root  = root;
+			m_owner = owner;
+			m_posn  = name.posn;
 			m_class = className.text;
-			m_name = name.text;
+			m_name  = name.text;
 
 			Parse(input);
 		}
@@ -473,56 +488,81 @@ private
 		// Get a sub-item of this data item
 		override IDataBlock Using(string item)
 		{
-			auto p = item in m_using;
-
-			if (p is null)
+			if (item == "OWNER")
 			{
-				return null;
+				return m_owner;
 			}
 			else
 			{
-				return *p;
+				return null;
 			}
 		}
 
 		// Get a sub-item of this data item
 		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 		{
-			auto p = item in m_list;
-
-			if (p is null)
+			if (item == "FIELD")
 			{
-				return tuple(false, DList!IDataBlock());   // Allow missing lists
+				return tuple(true, DList!IDataBlock(m_fields));
 			}
 			else
 			{
-				return tuple(true, DList!IDataBlock(*p));
+				auto p = item in m_list;
+
+				if (p is null)
+				{
+					return tuple(false, DList!IDataBlock());   // Allow missing lists
+				}
+				else
+				{
+					return tuple(true, DList!IDataBlock(*p));
+				}
 			}
 		}
 
 		// Expand the block as defined by the data object
 		override bool DoBlock(BaseOutput output, string name, string subtype)
 		{
-			auto p = name in m_blocks;
+			if (name == "FIELDS")
+			{
+				output.Write(FormatValue(cast(long)m_fields.length, subtype));
+				return true;
+			}
+			else if (name[$-1] == 'S')
+			{
+				auto p = name[0..$-1] in m_list;
+				if (p !is null)
+				{
+					output.Write(FormatValue(cast(long)(*p).length, subtype));
+					return true;
+				}
+			}
+			else
+			{
+				// Drop through
+			}
+
+			auto p = name in m_textBlocks;
 
 			if (p is null)
 			{
-				return false;
+				p = name in m_valueBlocks;
+				if (p is null)
+				{
+					return false;
+				}
+				else
+				{
+					string value = *p;
+					output.Write(FormatValue(Evaluate(value), subtype));
+					return true;
+				}
 			}
 			else
 			{
 				string value = *p;
-
-				if (IsValue(value))
-				{
-					output.Write(FormatValue(Evaluate(value), subtype));
-					return true;
-				}
-				else
-				{
-					output.Write(FormatName(value, subtype));
-					return true;
-				}
+				output.Write(FormatName(value, subtype));
+				return true;
 			}
 		}
 
@@ -539,20 +579,375 @@ private
 		void Parse(Tokenise input)
 		{
 			auto token = input.Get();
-			while ((token.type != Type.CLOSE_BRACE) && (token.type != Type.EOF))
+			while (token.type != Type.EOF)
 			{
-				token = input.Get();
+				if (token.type == Type.CLOSE_BRACE)
+				{
+					return;
+				}
+				else if (token.type == Type.OPTIONAL)
+				{
+					auto name = input.Get();
+					if (name.type != Type.NAME)
+					{
+						Error(token.posn, "Missing field type : [" ~ token.text ~ "]");
+						StripStatement(input, token);
+					}
+					else
+					{
+						token = input.Get();
+						if (token.type != Type.NAME)
+						{
+							Error(token.posn, "Missing field name : [" ~ token.text ~ "]");
+							StripStatement(input, token);
+						}
+						else
+						{
+							ParseField(name, token, input, true);
+						}
+					}
+				}
+				else if (token.type == Type.NAME)
+				{
+					auto name = token;
+					token = input.Get();
+
+					if (token.type == Type.ASIGN)
+					{
+						ParseAsign(name, input);
+					}
+					else if (token.type == Type.NAME)
+					{
+						ParseObject(name, token, input);
+					}
+					else
+					{
+						Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
+						StripStatement(input, token);
+					}
+				}
+				else
+			    {
+					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
+					StripStatement(input, token);
+			    }
+
+			    token = input.Get();
 			}
 		}
 
-		string[string]       m_blocks;
-		IDataBlock[string]   m_using;
+		void ParseAsign(Token name, Tokenise input)
+		{
+			auto token = input.Get();
+			if (token.type == Type.OPEN_BRACE)
+			{
+				ParseList(name, input);
+				return;
+			}
+			else if ((token.type != Type.NAME)  &&
+			    (token.type != Type.VALUE) &&
+			    (token.type != Type.TEXT))
+			{
+				Error(token.posn, "Missing asignment value (expected <name> | <value> | <text> )");
+			}
+			else if (token.type != Type.VALUE)
+			{
+				AsignValue(name.text, token.text);
+			}
+			else
+			{
+				AsignText(name.text, token.text);
+			}
+
+			token = input.Get();
+			if (token.type != Type.END_STATEMENT)
+			{
+				Error(token.posn, "Unterminated asignment statement (expected ; )");
+				StripStatement(input, token);
+			}
+		}
+
+		void AsignValue(string name, string value)
+		{
+			m_valueBlocks[FormatName(name, "UPPER1")] = value;
+		}
+
+		void AsignText(string name, string value)
+		{
+			m_textBlocks[FormatName(name, "UPPER1")] = value;
+		}
+
+		void AddList(string name, IDataBlock[] list)
+		{
+			m_list[FormatName(name, "UPPER1")] = list;
+		}
+
+		void ParseList(Token name, Tokenise input)
+		{
+			auto token = input.Get();
+
+			IDataBlock[] list;
+
+			if (token.type == Type.VALUE)
+			{
+				// Value list
+				while (token.type == Type.VALUE)
+				{
+					list ~= new ValueObj(token.text);
+					token = input.Get();
+				}
+
+				if (token.type != Type.CLOSE_BRACE)
+				{
+					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
+					StripStatement(input, token);
+				}
+				else
+				{
+					token = input.Get();
+					if (token.type != Type.END_STATEMENT)
+					{
+						Error(token.posn, "Unterminated list statement (expected ; )");
+						StripStatement(input, token);
+					}
+					else
+					{
+						AddList(name.text, list);
+					}
+				}
+			}
+			else if ((token.type == Type.NAME) ||
+			         (token.type == Type.TEXT))
+			{
+				// Text list
+				while ((token.type == Type.NAME) ||
+			           (token.type == Type.TEXT))
+				{
+					list ~= new TextObj(token.text);
+					token = input.Get();
+				}
+
+				if (token.type != Type.CLOSE_BRACE)
+				{
+					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
+					StripStatement(input, token);
+				}
+				else
+				{
+					token = input.Get();
+					if (token.type != Type.END_STATEMENT)
+					{
+						Error(token.posn, "Unterminated list statement (expected ; )");
+						StripStatement(input, token);
+					}
+					else
+					{
+						AddList(name.text, list);
+					}
+				}
+			}
+			else
+			{
+				Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
+				StripStatement(input, token);
+			}
+
+		}
+
+		void ParseObject(Token classDefn, Token name, Tokenise input)
+		{
+			auto token = input.Get();
+
+			if (token.type == Type.ASIGN)
+			{
+				input.Put(token);
+				ParseField(classDefn, name, input, false);
+			}
+			else if (token.type == Type.END_STATEMENT)
+			{
+				input.Put(token);
+				ParseField(classDefn, name, input, false);
+			}
+			else if ((token.type == Type.NAME) ||
+			         (token.type == Type.TEXT))
+			{
+				input.Put(token);
+				ParseField(classDefn, name, input, false);
+			}
+			else if (token.type != Type.OPEN_BRACE)
+			{
+				Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
+			}
+			else
+			{
+				auto obj = new DataObject(m_root, this, input, classDefn, name);
+
+				if (obj.HasError)
+				{
+					Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
+				}
+
+				if (!m_root.IsValid(m_class, classDefn.text))
+				{
+					Error(classDefn.posn, "Object " ~ classDefn.text ~ " not permitted in " ~ m_class);
+				}
+			}
+		}
+
+		void ParseField(Token type, Token name, Tokenise input, bool optional)
+		{
+			auto token = input.Get();
+
+			if (token.type == Type.ASIGN)
+			{
+				auto value = input.Get();
+				if (value.type != Type.VALUE)
+				{
+					Error(token.posn, "Illegal field value [" ~ value.text ~ "] (expected <value> )");
+				}
+				else
+				{
+					token = input.Get();
+					if ((token.type == Type.NAME) ||
+						(token.type == Type.TEXT))
+					{
+						AddField(type.text, name.text, value.text, token.text, optional);
+					}
+					else
+					{
+						input.Put(token);
+						AddField(type.text, name.text, value.text, "", optional);
+					}
+				}
+			}
+			else if (token.type == Type.END_STATEMENT)
+			{
+				input.Put(token);
+				AddField(type.text, name.text, "", "", optional);
+			}
+			else if ((token.type == Type.NAME) ||
+			         (token.type == Type.TEXT))
+			{
+				AddField(type.text, name.text, "", token.text, optional);
+			}
+			else
+			{
+			}
+
+			token = input.Get();
+			if (token.type != Type.END_STATEMENT)
+			{
+				Error(token.posn, "Unterminated field statement (expected ; )");
+				StripStatement(input, token);
+			}
+		}
+
+		void AddField(string type, string name, string value, string text, bool optional)
+		{
+			m_fields ~= new Field(type, name, value, text, optional);
+		}
+
+
+		string[string]       m_textBlocks;
+		string[string]       m_valueBlocks;
 		IDataBlock[][string] m_list;
+		IDataBlock[]         m_fields;
+
+		ProtoBlock m_root;
+		IDataBlock m_owner;
 
 		string m_posn;
 		string m_class;
 		string m_name;
 		bool   m_error;
+	}
+
+	class Field : IDataBlock
+	{
+		this(string type, string name, string value, string text, bool optional)
+		{
+			m_type = type;
+			m_name = name;
+			m_value = value;
+			m_text = text;
+			m_optional = optional;
+		}
+
+		bool HasError()
+		{
+			return false;
+		}
+
+		// A string to identify this type of data object
+		override string Class()
+		{
+			return "FIELD";
+		}
+
+		// Position of this in the input file
+		override string Posn()
+		{
+			return "????";
+		}
+
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+			return null;
+		}
+
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+		{
+			return tuple(false, DList!IDataBlock());
+		}
+
+		// Expand the block as defined by the data object
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+		{
+			if (name == "TYPE")
+			{
+				output.Write(FormatName(m_type, subtype));
+				return true;
+			}
+			else if (name == "NAME")
+			{
+				output.Write(FormatName(m_name, subtype));
+				return true;
+			}
+			else if (name == "VALUE")
+			{
+				output.Write(FormatValue(Evaluate(m_value), subtype));
+				return true;
+			}
+			else if (name == "TEXT")
+			{
+				output.Write(FormatName(m_text, subtype));
+				return true;
+			}
+			else if (name == "OPTIONAL")
+			{
+				output.Write(FormatName((m_optional?"TRUE":"FALSE"), subtype));
+				return true;
+			}
+
+			return false;
+		}
+
+		override void Dump(BaseOutput file)
+		{
+		}
+
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+		}
+
+		string m_type;
+		string m_name;
+		string m_value;
+		string m_text;
+		bool   m_optional;
 	}
 
 	class TextObj : IDataBlock
@@ -706,6 +1101,7 @@ private
 		{
 			m_error = false;
 			m_input = input;
+			m_token.type = Type.EOF;
 			m_posn  = "<START>";
 		}
 		
@@ -723,9 +1119,21 @@ private
 		{
 			return m_input.Push(file);
 		}
+
+		void Put(Token token)
+		{
+			m_token = token;
+		}
 		
 		Token Get()
 		{
+			if (m_token.type != Type.EOF)
+			{
+				auto token = m_token;
+				m_token.type = Type.EOF;
+				return token;
+			}
+
 			while (!m_input.Eof())
 			{
 				auto ch = m_input.Get();
@@ -733,7 +1141,11 @@ private
 				
 				m_text.clear();
 				
-				if (isWhite(ch))
+				if (ch == 0)
+				{
+					return Token(Type.EOF, "<EOF>");
+				}
+				else if (isWhite(ch))
 				{
 					// Ignore white space
 				}
@@ -827,7 +1239,16 @@ private
 				ch = m_input.Get();
 			}
 			
-			if ((ch != '\0') && (ch != '"') && (ch != '=') && (ch != ';') && (ch != '{') && (ch != '}') && !isWhite(ch))
+			if ((ch != '\0') &&
+			    (ch != '"')  &&
+			    (ch != '=')  &&
+			    (ch != ';')  &&
+			    (ch != '{')  &&
+			    (ch != '}')  &&
+			    (ch != '(')  &&
+			    (ch != ')')  &&
+			    (ch != ',')  &&
+			    !isWhite(ch))
 			{
 				return ParseText(ch);
 			}
@@ -855,7 +1276,16 @@ private
 //  <name>        ::= (<letter> | "_") { <letter> | <number> | "_" }
 //  <text>        ::= { <non-whitespace> } 
 			auto ch = leadCh;
-			while ((ch != '\0') && (ch != '"') && (ch != '=') && (ch != ';') && (ch != '{') && (ch != '}') && !isWhite(ch))
+			while ((ch != '\0') &&
+			    (ch != '"')  &&
+			    (ch != '=')  &&
+			    (ch != ';')  &&
+			    (ch != '{')  &&
+			    (ch != '}')  &&
+			    (ch != '(')  &&
+			    (ch != ')')  &&
+			    (ch != ',')  &&
+			    !isWhite(ch))
 			{
 				m_text.put(ch);
 				ch = m_input.Get();
@@ -942,6 +1372,7 @@ private
 			m_error = true; 
 		}
 		
+		Token      m_token;
 		InputStack m_input;
 		string     m_posn;
 		bool       m_error;

@@ -2,11 +2,15 @@
 
 // This is a comment
 
+object(proto, enum);
+object(proto, message);
+object(message, message);
+
 include "fred" ;
 
-type here = uint32_t;
+here = uint32_t;
 
-there = 345.8 ;
+there = "345.8" ;
 
 enum billbo
 {
