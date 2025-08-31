@@ -10,12 +10,13 @@ include "fred" ;
 
 here = uint32_t;
 
-there = "345.8" ;
+there = 345.8 ;
 
 enum billbo
 {
-   uint32_t fred = 4;
-   uint8_t biil = 1;
+   TYPE = uint8_t;
+   fred = 4;
+   biil = 1;
 }
 
 message General

@@ -293,7 +293,7 @@ private
 			{
 				Error(token.posn, "Missing asignment value (expected <name> | <value> | <text> )");
 			}
-			else if (token.type != Type.VALUE)
+			else if (token.type == Type.VALUE)
 			{
 				AsignValue(name.text, token.text);
 			}
@@ -398,10 +398,21 @@ private
 				{
 					Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
 				}
-
-				if (!IsValid("proto", classDefn.text))
+				else if (!IsValid("proto", classDefn.text))
 				{
 					Error(classDefn.posn, "Object " ~ classDefn.text ~ " not permitted in " ~ "proto");
+				}
+				else
+				{
+					auto p = obj.Class() in m_list;
+
+					if (p is null)
+					{
+						IDataBlock[] list;
+						m_list[obj.Class()] = list;
+					}
+
+					m_list[obj.Class()] ~= obj;
 				}
 			}
 		}
@@ -463,7 +474,8 @@ private
 			m_owner = owner;
 			m_posn  = name.posn;
 			m_class = className.text;
-			m_name  = name.text;
+
+			m_textBlocks["NAME"] = name.text;
 
 			Parse(input);
 		}
@@ -505,6 +517,10 @@ private
 			{
 				return tuple(true, DList!IDataBlock(m_fields));
 			}
+			else if (item == "BLOCK")
+			{
+				return tuple(true, DList!IDataBlock(m_blocks));
+			}
 			else
 			{
 				auto p = item in m_list;
@@ -526,6 +542,11 @@ private
 			if (name == "FIELDS")
 			{
 				output.Write(FormatValue(cast(long)m_fields.length, subtype));
+				return true;
+			}
+			else if (name == "BLOCKS")
+			{
+				output.Write(FormatValue(cast(long)m_blocks.length, subtype));
 				return true;
 			}
 			else if (name[$-1] == 'S')
@@ -650,7 +671,7 @@ private
 			{
 				Error(token.posn, "Missing asignment value (expected <name> | <value> | <text> )");
 			}
-			else if (token.type != Type.VALUE)
+			else if (token.type == Type.VALUE)
 			{
 				AsignValue(name.text, token.text);
 			}
@@ -670,11 +691,13 @@ private
 		void AsignValue(string name, string value)
 		{
 			m_valueBlocks[FormatName(name, "UPPER1")] = value;
+			m_blocks ~= new ValueObj(name, value);
 		}
 
 		void AsignText(string name, string value)
 		{
 			m_textBlocks[FormatName(name, "UPPER1")] = value;
+			m_blocks ~= new TextObj(name, value);
 		}
 
 		void AddList(string name, IDataBlock[] list)
@@ -786,10 +809,21 @@ private
 				{
 					Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
 				}
-
-				if (!m_root.IsValid(m_class, classDefn.text))
+				else if (!m_root.IsValid(m_class, classDefn.text))
 				{
 					Error(classDefn.posn, "Object " ~ classDefn.text ~ " not permitted in " ~ m_class);
+				}
+				else
+				{
+					auto p = obj.Class() in m_list;
+
+					if (p is null)
+					{
+						IDataBlock[] list;
+						m_list[obj.Class()] = list;
+					}
+
+					m_list[obj.Class()] ~= obj;
 				}
 			}
 		}
@@ -852,13 +886,13 @@ private
 		string[string]       m_valueBlocks;
 		IDataBlock[][string] m_list;
 		IDataBlock[]         m_fields;
+		IDataBlock[]         m_blocks;
 
 		ProtoBlock m_root;
 		IDataBlock m_owner;
 
 		string m_posn;
 		string m_class;
-		string m_name;
 		bool   m_error;
 	}
 
@@ -954,6 +988,13 @@ private
 	{
 		this(string text)
 		{
+			m_name = "";
+			m_text = text;
+		}
+
+		this(string name, string text)
+		{
+			m_name = name;
 			m_text = text;
 		}
 
@@ -989,6 +1030,12 @@ private
 		// Expand the block as defined by the data object
 		override bool DoBlock(BaseOutput output, string name, string subtype)
 		{
+			if (name == "NAME")
+			{
+				output.Write(FormatName(m_name, subtype));
+				return true;
+			}
+
 			if (name == "TEXT")
 			{
 				output.Write(FormatName(m_text, subtype));
@@ -1007,6 +1054,7 @@ private
 			writeln(posn, message);
 		}
 
+		string m_name;
 		string m_text;
 	}
 
@@ -1014,6 +1062,13 @@ private
 	{
 		this(string text)
 		{
+			m_name = "";
+			m_text = text;
+		}
+
+		this(string name, string text)
+		{
+			m_name = name;
 			m_text = text;
 		}
 
@@ -1049,6 +1104,12 @@ private
 		// Expand the block as defined by the data object
 		override bool DoBlock(BaseOutput output, string name, string subtype)
 		{
+			if (name == "NAME")
+			{
+				output.Write(FormatName(m_name, subtype));
+				return true;
+			}
+
 			if (name == "VALUE")
 			{
 				output.Write(FormatValue(Evaluate(m_text), subtype));
@@ -1067,6 +1128,7 @@ private
 			writeln(posn, message);
 		}
 
+		string m_name;
 		string m_text;
 	}
 	
@@ -1233,7 +1295,7 @@ private
 //  <name>        ::= (<letter> | "_") { <letter> | <number> | "_" }
 //  <text>        ::= { <non-whitespace> } 
 			auto ch = leadCh;
-			while ((ch != '\0') && ((ch == '_') || isAlphaNum(ch)))
+			while ((ch != '\0') && ((ch == '_') || (ch == '-') || isAlphaNum(ch)))
 			{
 				m_text.put(ch);
 				ch = m_input.Get();
@@ -1313,16 +1375,23 @@ private
 				ch = m_input.Get();
 			}
 			
-			m_input.Put(ch);
-			
-			string value = m_text[].idup;
-			
-			if (value == "-")
+			if (ch == '.')
 			{
-				Error(m_input.Posn(), "Illegal value : " ~ value);
+				return ParseText(ch);
 			}
-			
-			return Token(Type.VALUE, value, m_input.Posn());
+			else
+			{
+				string value = m_text[].idup;
+
+				if (value == "-")
+				{
+					return ParseText(ch);
+				}
+
+				m_input.Put(ch);
+
+				return Token(Type.VALUE, value, m_input.Posn());
+			}
 		}
 		
 		Token ParseQuoted(char leadCh)

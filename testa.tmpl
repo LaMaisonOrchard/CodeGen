@@ -1,4 +1,16 @@
 
 
 !BLK ROOT
+![FOREACH ENUM BLAT]!
 !END
+
+!BLK BLAT
+enum ![NAME]! : ![TYPE]!
+{
+![FOREACH BLOCK LIST:(CLASS)]!}
+!END
+
+!BLK LIST:VALUE
+   ![NAME]! = ![VALUE:INT]!;
+!END
+!BLK LIST:TEXT=
