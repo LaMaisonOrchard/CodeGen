@@ -129,7 +129,7 @@ There is a special **EVAL** block type.
 // and return the result as text
 !EVAL EVALUATE =![EXPRESSION]!
 
-EVALUATE = 7*(2+3)
+EXPRESSION = 7*(2+3)
 ```
 
 This can be used with a special named block **SUBTYPE**. The block **SUBTYPE** is the subtype
@@ -150,8 +150,23 @@ none = ![EVALUATE:none]!
 
 !BLK EVALUATE:none =No expression
 
-EVALUATE = 7*(2+3)
+EXPRESSION = 7*(2+3)
 ```
+
+There is a special **ERR** block type.
+
+```
+!FIL ROOT file.txt
+![HELLO:fred]!
+![HELLO:jan]! 
+!END
+
+!BLK HELLO:fred = Hi how are you Fred
+!ERR HELLO = Unrecognised subtype error
+```
+
+If an **ERR** block is referenced then a fatal error is raise and the code generation stop.
+The body of the block is used as the errors message.
 
 There a few other bits.
 * Text blocks can be included into file names in **FIL** definitions.

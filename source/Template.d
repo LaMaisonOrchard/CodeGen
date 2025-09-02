@@ -19,10 +19,18 @@ import Output;
 import Data;
 import Utilities;
 
-enum string VERSION = "1.0.0";
+enum string VERSION = "1.1.0";
 
 public
 {	
+	class FatalException : Exception
+	{
+		pure this(string posn, string msg)
+		{
+			super(posn ~ " :: " ~ msg);
+		}
+	}
+	
 	final class Template
 	{
 		this(string filename)
@@ -60,14 +68,21 @@ public
 			m_output = new OutputStack(name, dir, copy, isSet("InvertMerge"));
 			m_data   = new DataStack(context);
 			
-			auto block = FindBlock("<ROOT>", "ROOT", "");
-			if (block !is null)
+			try
 			{
-				block.Generate(m_output, "");
+				auto block = FindBlock("<ROOT>", "ROOT", "");
+				if (block !is null)
+				{
+					block.Generate(m_output, "");
+				}
+				else
+				{
+					Error("<ROOT>", "No ROOT block");
+				}
 			}
-			else
+			catch (FatalException ex)
 			{
-				Error("<ROOT>", "No ROOT block");
+				Error(GetMessage(ex));
 			}
 			
 			m_output.Close();
@@ -581,6 +596,33 @@ public
 				Block m_filename;
 			}
 		
+		
+			// A block of text made up of references to litteral text or other blocks
+			final class ErrorBlock : Block
+			{
+				this (string posn)
+				{
+					super(posn);
+				}
+				
+				this (string posn, string name, string subtype)
+				{
+					super(posn, name, subtype);
+				}
+				
+				override void Generate(OutputStack output, string callSubtype)
+				{
+					auto text_output = new TextOutput();
+					auto stack       = new OutputStack(text_output);
+					foreach (reference; m_blocks)
+					{
+						reference.Expand(stack, callSubtype);
+					}
+					
+					throw new FatalException(this.outer.m_data.Posn(), text_output.Text());
+				}
+			}
+		
 			// A block of text made up of references to litteral text or other blocks
 			final class EvalBlock : Block
 			{
@@ -703,6 +745,12 @@ public
 							else if (line[0 .. 4] == "!FIL")
 							{
 								block = ParseFileBlock(input.Posn(), line[4..$]);
+								text.clear();
+								continue;
+							}
+							else if (line[0 .. 4] == "!ERR")
+							{
+								block = ParseErrorBlock(input.Posn(), line[4..$]);
 								text.clear();
 								continue;
 							}
@@ -1094,6 +1142,20 @@ public
 				line  = ParseBlockName(posn, line, name, subtype);
 				line  = ParseFileName(posn, line, filename);
 				block = AddBlock(posn, new TextBlock(posn, name, subtype, filename));
+				
+				bool defined = ParseBlockAssignment(posn, line, block);
+				
+				return (defined)?(null):(block);
+			}
+			
+			Block ParseErrorBlock(string posn, string line)
+			{
+				string name;
+				string subtype;
+				Block  block;
+				
+				line  = ParseBlockName(posn, line, name, subtype);
+				block = AddBlock(posn, new ErrorBlock(posn, name, subtype));
 				
 				bool defined = ParseBlockAssignment(posn, line, block);
 				
@@ -1565,6 +1627,18 @@ private
 		auto output = new OutputStack(data);
 		block.Generate(output);
 		assert(data.Text() == "FRED");
+	}
+
+	unittest
+	{
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT=![FRED]!\n!ERR FRED=harry")));
+
+		assert (!tmpl.HasError);
+
+		IDataBlock data = new DefaultDataBlock("Test:001");
+		tmpl.Generate("stdout", data, "tmp", "other");
+
+		assert (tmpl.HasError);
 	}
 				
 	bool IsBlockNameChar(char ch)
