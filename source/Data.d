@@ -95,6 +95,79 @@ public
 		}
 	}
 	
+	
+	class SuperBlock : IDataBlock
+	{
+		final this()
+		{
+		}
+		
+		final string Class() {return "SUPER";}
+		
+		override string Posn()
+		{
+			return "<SUPER>";
+		}
+		
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+		{
+			switch (name)
+			{
+				case "FILES":
+					output.Write(FormatValue(m_files.length, subtype));
+					break;
+					
+				default:
+					// No matching block
+					return false;
+			}
+			
+			return true;
+		}
+		
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+			return null;
+		}
+		
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+		{
+			if (item == "FILE")
+			{
+				return tuple(true, DList!IDataBlock(m_files));
+			}
+			else
+			{
+				return tuple(false, DList!IDataBlock());
+			}
+		}
+		
+		override void Dump(BaseOutput file)
+		{
+			foreach (block ; m_files)
+			{
+				block.Dump(file);
+			}
+		}
+		
+		void Add(IDataBlock block)
+		{
+			m_files ~= block;
+		}
+		
+		IDataBlock[] Files()
+		{
+			return m_files;
+		}
+		
+		private
+		{
+			IDataBlock[] m_files;
+		}
+	}
+	
 	final class DataStack : IDataBlock
 	{
 		this(IDataBlock data)

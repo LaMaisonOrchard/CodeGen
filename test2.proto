@@ -8,7 +8,7 @@ object(message, message);
 
 include "fred" ;
 
-name = test;
+name = test2;
 here = uint32_t;
 
 there = 345.8 ;

@@ -6,12 +6,25 @@ looks like and and a data file that defines what is to be generated.
 
 **CodeGen -tmpl test.tmpl test.json**
 
-In this case the **test.tmpl** file describes what the output will look like and **test.json** is that data
-that is used to generate the output. Currently only JSON is supported for the data file but other formats
+In this case the **test.tmpl** file describes what the output will look like and **test.json** is the data
+that is used to generate the output. Currently only JSON and PROTO are supported for the data file but other formats
 can be supported. 
 
 * The **-dest** switch specifies a root directory for the output (default tmp).
 * The **-copy** switch specifies a root directory where the files are copied to and merged with any existing files.
+
+Multiple tempates and data files can be specified and each data file is applied to each template.
+
+There are also super templates supported. In this case the template is applied to all the files together.
+A super objects is created that has a single list which is the files.
+
+**CodeGen -super test.tmpl test1.json test1.json**
+
+| Type   | Name   | Description                 |
+| ------ | ------ | --------------------------- |
+| Block  | CLASS  | The blocks class == "SUPER" |
+| Block  | FILES  | The number of files         |
+| List   | FILE   | A list of the files as read |
 
 ## Building
 

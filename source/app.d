@@ -15,8 +15,9 @@ import Data;
 
 int main(string[] args)
 {
-	IDataBlock[]        dataFiles;
+	SuperBlock          dataFiles = new SuperBlock();
 	Template.Template[] templates;
+	Template.Template[] superTemplates;
 	
 	string dest = "tmp";
 	string copy;
@@ -35,15 +36,16 @@ int main(string[] args)
 		{
 			case "-h":
 			case "-help":
-				writeln(baseName(args[0]), " [-i] [-h] [-dest <path>] [-copy <path>] {-tmpl <template>} {<data file>}");
-				writeln("    -i               : Version");
-				writeln("    -version         : Version");
-				writeln("    -h               : This help output");
-				writeln("    -help            : Version");
-				writeln("    -dest <path>     : This is where the output files will be written to");
-				writeln("    -copy <path>     : This is where the output files will be copied/merged to");
-				writeln("    -tmpl <template> : Template file");
-				writeln("    <data file>      : The data to be applied to the template");
+				writeln(baseName(args[0]), " [-i] [-h] [-dest <path>] [-copy <path>] {-tmpl <template>} {-super <template>} {<data file>}");
+				writeln("    -i                : Version");
+				writeln("    -version          : Version");
+				writeln("    -h                : This help output");
+				writeln("    -help             : Version");
+				writeln("    -dest <path>      : This is where the output files will be written to");
+				writeln("    -copy <path>      : This is where the output files will be copied/merged to");
+				writeln("    -tmpl <template>  : Template file");
+				writeln("    -super <template> : Template file");
+				writeln("    <data file>       : The data to be applied to the template");
 				return 0;
 				
 			case "-i":
@@ -52,6 +54,8 @@ int main(string[] args)
 				return 0;
 				
 			case "-tmpl":
+			case "-super":
+				auto flag = args[i];
 				i += 1;
 				if (i >= args.length)
 				{
@@ -66,6 +70,10 @@ int main(string[] args)
 					{
 						writeln("Illegal template : ", args[i]);
 						rtn = -1;
+					}
+					else if (flag == "-super")
+					{
+						superTemplates ~= tmpl;
 					}
 					else
 					{
@@ -116,7 +124,7 @@ int main(string[] args)
 					}
 					else
 					{
-						dataFiles ~= data;
+						dataFiles.Add(data);
 					}
 				}
 				break;
@@ -132,10 +140,15 @@ int main(string[] args)
 	// Generate what output we can
 	foreach(tmpl ; templates)
 	{
-		foreach(data ; dataFiles)
+		foreach(data ; dataFiles.Files())
 		{
 			tmpl.Generate("stdout", data, dest, copy);
 		}
+	}
+	
+	foreach(tmpl ; superTemplates)
+	{
+		tmpl.Generate("stdout", dataFiles, dest, copy);
 	}
 	
 	return rtn;
