@@ -5,6 +5,7 @@
 object(proto, enum);
 object(proto, message);
 object(message, message);
+object(message, bilbo);
 
 include "fred" ;
 
@@ -30,4 +31,29 @@ message General
 		billbo fred = 4;
 		here biil = 1;
 	}
+	
+	message other
+	{
+		message GET
+		{
+			ID = 8;
+			billbo fred = 4;
+			here biil = 1;
+		}
+		
+		message RSP
+		{
+			ID = 8;
+			billbo fred = 4;
+			here biil = 1;
+			
+			bilbo NotHere
+			{
+			}
+		}
+	}
+}
+
+message mine
+{
 }

@@ -109,9 +109,42 @@ private
 			{
 				return tuple(false, DList!IDataBlock());
 			}
-			else
+			else if (!leaf)
 			{
 				return tuple(true, DList!IDataBlock(*p));
+			}
+			else
+			{
+				// Find the leaf nodes
+				Appender!(IDataBlock[]) leafList;
+				
+				foreach (entry ; *p)
+				{
+					auto list = entry.List(leaf, item);
+					if (!list[0])
+					{
+						// This is a leaf entry
+						leafList ~= entry;
+					}
+					else
+					{
+						bool isLeafy = true;
+						foreach (leafy ; list[1])
+						{
+							// Add the leaf entries in this nodes
+							isLeafy = false;
+							leafList ~= leafy;
+						}
+						
+						if (isLeafy)
+						{
+							// This is a leaf node
+							leafList ~= entry;
+						}
+					}
+				}
+				
+				return tuple(true, DList!IDataBlock(leafList[]));
 			}
 		}
 		
@@ -529,9 +562,42 @@ private
 				{
 					return tuple(false, DList!IDataBlock());   // Allow missing lists
 				}
-				else
+				else if (!leaf)
 				{
 					return tuple(true, DList!IDataBlock(*p));
+				}
+				else
+				{
+					// Find the leaf nodes
+					Appender!(IDataBlock[]) leafList;
+					
+					foreach (entry ; *p)
+					{
+						auto list = entry.List(leaf, item);
+						if (!list[0])
+						{
+							// This is a leaf entry
+							leafList ~= entry;
+						}
+						else
+						{
+							bool isLeafy = true;
+							foreach (leafy ; list[1])
+							{
+								// Add the leaf entries in this nodes
+								isLeafy = false;
+								leafList ~= leafy;
+							}
+							
+							if (isLeafy)
+							{
+								// This is a leaf node
+								leafList ~= entry;
+							}
+						}
+					}
+					
+					return tuple(true, DList!IDataBlock(leafList[]));
 				}
 			}
 		}
