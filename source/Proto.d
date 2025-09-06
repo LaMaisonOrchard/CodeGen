@@ -328,11 +328,11 @@ private
 			}
 			else if (token.type == Type.VALUE)
 			{
-				AsignValue(name.text, token.text);
+				AsignValue(name, token.text);
 			}
 			else
 			{
-				AsignText(name.text, token.text);
+				AsignText(name, token.text);
 			}
 
 			token = input.Get();
@@ -354,7 +354,7 @@ private
 				// Value list
 				while (token.type == Type.VALUE)
 				{
-					list ~= new ValueObj(token.text);
+					list ~= new ValueObj(token);
 					token = input.Get();
 				}
 
@@ -384,7 +384,7 @@ private
 				while ((token.type == Type.NAME) ||
 			           (token.type == Type.TEXT))
 				{
-					list ~= new TextObj(token.text);
+					list ~= new TextObj(token);
 					token = input.Get();
 				}
 
@@ -460,14 +460,14 @@ private
 			return canFind(m_defns, Defn(parent, child));
 		}
 
-		void AsignValue(string name, string value)
+		void AsignValue(Token name, string value)
 		{
-			m_valueBlocks[FormatName(name, "UPPER1")] = value;
+			m_valueBlocks[FormatName(name.text, "UPPER1")] = value;
 		}
 
-		void AsignText(string name, string value)
+		void AsignText(Token name, string value)
 		{
-			m_textBlocks[FormatName(name, "UPPER1")] = value;
+			m_textBlocks[FormatName(name.text, "UPPER1")] = value;
 		}
 
 		void AddList(string name, IDataBlock[] list)
@@ -739,11 +739,11 @@ private
 			}
 			else if (token.type == Type.VALUE)
 			{
-				AsignValue(name.text, token.text);
+				AsignValue(name, token.text);
 			}
 			else
 			{
-				AsignText(name.text, token.text);
+				AsignText(name, token.text);
 			}
 
 			token = input.Get();
@@ -754,15 +754,15 @@ private
 			}
 		}
 
-		void AsignValue(string name, string value)
+		void AsignValue(Token name, string value)
 		{
-			m_valueBlocks[FormatName(name, "UPPER1")] = value;
+			m_valueBlocks[FormatName(name.text, "UPPER1")] = value;
 			m_blocks ~= new ValueObj(name, value);
 		}
 
-		void AsignText(string name, string value)
+		void AsignText(Token name, string value)
 		{
-			m_textBlocks[FormatName(name, "UPPER1")] = value;
+			m_textBlocks[FormatName(name.text, "UPPER1")] = value;
 			m_blocks ~= new TextObj(name, value);
 		}
 
@@ -782,7 +782,7 @@ private
 				// Value list
 				while (token.type == Type.VALUE)
 				{
-					list ~= new ValueObj(token.text);
+					list ~= new ValueObj(token);
 					token = input.Get();
 				}
 
@@ -812,7 +812,7 @@ private
 				while ((token.type == Type.NAME) ||
 			           (token.type == Type.TEXT))
 				{
-					list ~= new TextObj(token.text);
+					list ~= new TextObj(token);
 					token = input.Get();
 				}
 
@@ -911,24 +911,24 @@ private
 					if ((token.type == Type.NAME) ||
 						(token.type == Type.TEXT))
 					{
-						AddField(type.text, name.text, value.text, token.text, optional);
+						AddField(type.text, name, value.text, token.text, optional);
 					}
 					else
 					{
 						input.Put(token);
-						AddField(type.text, name.text, value.text, "", optional);
+						AddField(type.text, name, value.text, "", optional);
 					}
 				}
 			}
 			else if (token.type == Type.END_STATEMENT)
 			{
 				input.Put(token);
-				AddField(type.text, name.text, "", "", optional);
+				AddField(type.text, name, "", "", optional);
 			}
 			else if ((token.type == Type.NAME) ||
 			         (token.type == Type.TEXT))
 			{
-				AddField(type.text, name.text, "", token.text, optional);
+				AddField(type.text, name, "", token.text, optional);
 			}
 			else
 			{
@@ -942,7 +942,7 @@ private
 			}
 		}
 
-		void AddField(string type, string name, string value, string text, bool optional)
+		void AddField(string type, Token name, string value, string text, bool optional)
 		{
 			m_fields ~= new Field(type, name, value, text, optional);
 		}
@@ -964,10 +964,11 @@ private
 
 	class Field : IDataBlock
 	{
-		this(string type, string name, string value, string text, bool optional)
+		this(string type, Token name, string value, string text, bool optional)
 		{
+			m_posn = name.posn;
 			m_type = type;
-			m_name = name;
+			m_name = name.text;
 			m_value = value;
 			m_text = text;
 			m_optional = optional;
@@ -987,7 +988,7 @@ private
 		// Position of this in the input file
 		override string Posn()
 		{
-			return "????";
+			return m_posn;
 		}
 
 		// Get a sub-item of this data item
@@ -1043,6 +1044,7 @@ private
 			writeln(posn, message);
 		}
 
+		string m_posn;
 		string m_type;
 		string m_name;
 		string m_value;
@@ -1052,15 +1054,17 @@ private
 
 	class TextObj : IDataBlock
 	{
-		this(string text)
+		this(Token text)
 		{
+			m_posn = text.posn;
 			m_name = "";
-			m_text = text;
+			m_text = text.text;
 		}
 
-		this(string name, string text)
+		this(Token name, string text)
 		{
-			m_name = name;
+			m_posn = name.posn;
+			m_name = name.text;
 			m_text = text;
 		}
 
@@ -1078,7 +1082,7 @@ private
 		// Position of this in the input file
 		override string Posn()
 		{
-			return "????";
+			return m_posn;
 		}
 
 		// Get a sub-item of this data item
@@ -1120,21 +1124,24 @@ private
 			writeln(posn, message);
 		}
 
+		string m_posn;
 		string m_name;
 		string m_text;
 	}
 
 	class ValueObj : IDataBlock
 	{
-		this(string text)
+		this(Token text)
 		{
+			m_posn = text.posn;
 			m_name = "";
-			m_text = text;
+			m_text = text.text;
 		}
 
-		this(string name, string text)
+		this(Token name, string text)
 		{
-			m_name = name;
+			m_posn = name.posn;
+			m_name = name.text;
 			m_text = text;
 		}
 
@@ -1152,7 +1159,7 @@ private
 		// Position of this in the input file
 		override string Posn()
 		{
-			return "????";
+			return m_posn;
 		}
 
 		// Get a sub-item of this data item
@@ -1194,6 +1201,7 @@ private
 			writeln(posn, message);
 		}
 
+		string m_posn;
 		string m_name;
 		string m_text;
 	}
