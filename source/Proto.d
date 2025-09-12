@@ -68,13 +68,81 @@ public
 
 private
 {
-	final class ProtoBlock : IDataBlock
+    class ProtoData : IDataBlock
+    {
+		// A string to identify this type of data object
+		override string Class()
+        {
+            return "BASE_CLASS";
+        }
+		
+		string TrueClass()
+        {
+            return m_class;
+        }
+		
+		// Position of this in the input file
+		override string Posn()
+        {
+            return "NoWhere";
+        }
+		
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+        {
+            return null;
+        }
+		
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+        {
+			return tuple(false, DList!IDataBlock());
+        }
+		
+		// Expand the block as defined by the data object
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+        {
+            return false;
+        }
+		
+		override void Dump(BaseOutput file)
+        {
+        }
+    
+        ProtoData GetType(string name)
+        {
+            auto p = name in m_typeList;
+            if (p is null)
+            {
+                if (m_owner is null)
+                {
+                    return null;
+                }
+                else
+                {
+                    return m_owner.GetType(name);
+                }
+            }
+            else
+            {
+                return *p;
+            }
+        }
+        
+        string            m_class;
+        ProtoData         m_owner;
+        ProtoData[string] m_typeList;
+    }
+    
+	final class ProtoBlock : ProtoData
 	{
 		this(Tokenise input)
 		{
 			m_error = false;
 			m_posn  = input.Posn();
 			Parse(input);
+            
+            m_class = Class();
 		}
 		
 		bool HasError()
@@ -205,6 +273,10 @@ private
 				{
 					ParseObjectDefn(input);
 				}
+				else if (token.type == Type.TYPE)
+				{
+					ParseTypeDefn(input);
+				}
 				else if (token.type == Type.INCLUDE)
 				{
 					ParseInclude(input);
@@ -279,6 +351,43 @@ private
 							}
 						}
 					}
+				}
+			}
+
+			token = input.Get();
+			if (token.type != Type.END_STATEMENT)
+			{
+				Error(token.posn, "Unterminated object definition statement (expected ; )");
+				StripStatement(input, token);
+			}
+		}
+
+
+		void ParseTypeDefn(Tokenise input)
+		{
+			auto token = input.Get();
+			if (token.type != Type.OPEN)
+			{
+				Error(token.posn, "Missing object definition (expected ( )");
+			}
+			else
+			{
+				auto type = input.Get();
+				if (type.type != Type.NAME)
+				{
+					Error(token.posn, "Missing type in definition statement (expected <name> )");
+				}
+				else
+				{
+                    token = input.Get();
+                    if (token.type != Type.CLOSE)
+                    {
+                        Error(token.posn, "Unterminated object definition statement (expected ) )");
+                    }
+                    else
+                    {
+                        AddType(type.text);
+                    }
 				}
 			}
 
@@ -446,6 +555,11 @@ private
 					}
 
 					m_list[obj.Class()] ~= obj;
+                    
+                    if (m_types[obj.TrueClass()])
+                    {
+                        m_typeList[obj.Name()] = obj;
+                    }
 				}
 			}
 		}
@@ -453,6 +567,12 @@ private
 		void AddDefinition(string parent, string child)
 		{
 			m_defns ~= Defn(parent, child);
+            m_types.require(child, false);  // By default it is not a type   
+		}
+
+		void AddType(string type)
+		{
+			m_types[type] = true;
 		}
 
 		bool IsValid(string parent, string child)
@@ -482,6 +602,7 @@ private
 		}
 
 		Defn[] m_defns;
+		bool[string] m_types;
 		
 		string[string]       m_textBlocks;
 		string[string]       m_valueBlocks;
@@ -499,14 +620,15 @@ private
 		}
 	}
 
-	class DataObject : IDataBlock
+	class DataObject : ProtoData
 	{
-		this(ProtoBlock root, IDataBlock owner, Tokenise input, Token className, Token name)
+		this(ProtoBlock root, ProtoData owner, Tokenise input, Token className, Token name)
 		{
 			m_root  = root;
 			m_owner = owner;
 			m_posn  = name.posn;
 			m_class = className.text;
+            m_name  = name.text;
 
 			m_textBlocks["NAME"] = name.text;
 
@@ -523,6 +645,11 @@ private
 		{
 			return FormatName(m_class, "UPPER1");
 		}
+        
+        string Name()
+        {
+            return m_name;
+        }
 
 		// Position of this in the input file
 		override string Posn()
@@ -533,12 +660,24 @@ private
 		// Get a sub-item of this data item
 		override IDataBlock Using(string item)
 		{
-			if (item == "OWNER")
+            if (item == "TYPE")
+            {
+				auto p = "TYPE" in m_textBlocks;
+				if (p is null)
+				{
+					return null;
+				}
+				else
+				{
+                    return m_owner.GetType(*p);
+				}
+            }
+            else if (item == "OWNER")
 			{
 				return m_owner;
 			}
 			else
-			{
+            {
 				return null;
 			}
 		}
@@ -890,6 +1029,13 @@ private
 					}
 
 					m_list[obj.Class()] ~= obj;
+
+					m_list[obj.Class()] ~= obj;
+                    
+                    if (m_root.m_types[obj.TrueClass()])
+                    {
+                        m_typeList[obj.Name()] = obj;
+                    }
 				}
 			}
 		}
@@ -944,9 +1090,8 @@ private
 
 		void AddField(string type, Token name, string value, string text, bool optional)
 		{
-			m_fields ~= new Field(type, name, value, text, optional);
+			m_fields ~= new Field(type, name, this, value, text, optional);
 		}
-
 
 		string[string]       m_textBlocks;
 		string[string]       m_valueBlocks;
@@ -954,24 +1099,32 @@ private
 		IDataBlock[]         m_fields;
 		IDataBlock[]         m_blocks;
 
-		ProtoBlock m_root;
-		IDataBlock m_owner;
+		ProtoBlock  m_root;
 
 		string m_posn;
-		string m_class;
+        string m_name;
 		bool   m_error;
 	}
 
 	class Field : IDataBlock
 	{
-		this(string type, Token name, string value, string text, bool optional)
+		this(string type, Token name, DataObject owner, string value, string text, bool optional)
 		{
 			m_posn = name.posn;
 			m_type = type;
 			m_name = name.text;
+            m_owner = owner;
 			m_value = value;
 			m_text = text;
 			m_optional = optional;
+            
+            if ((m_type != "-") && (m_type != "_"))
+            {
+                if (m_owner.GetType(m_type) is null)
+                {
+                    Error(m_posn, "Undefined type : " ~ m_type);
+                }
+            }
 		}
 
 		bool HasError()
@@ -994,7 +1147,14 @@ private
 		// Get a sub-item of this data item
 		override IDataBlock Using(string item)
 		{
-			return null;
+            if (item == "TYPE")
+            {
+                return m_owner.GetType(m_type);
+            }
+            else
+            {
+                return null;
+            }
 		}
 
 		// Get a sub-item of this data item
@@ -1044,12 +1204,13 @@ private
 			writeln(posn, message);
 		}
 
-		string m_posn;
-		string m_type;
-		string m_name;
-		string m_value;
-		string m_text;
-		bool   m_optional;
+		string     m_posn;
+		string     m_type;
+		string     m_name;
+        DataObject m_owner;
+		string     m_value;
+		string     m_text;
+		bool       m_optional;
 	}
 
 	class TextObj : IDataBlock
@@ -1219,6 +1380,7 @@ private
 		INCLUDE,
 		OPTIONAL,
 		OBJECT,
+        TYPE,
 		VALUE,
 		TEXT,
 		EOF
@@ -1400,6 +1562,7 @@ private
 					case "optional" : type = Type.OPTIONAL; break;
 					case "include"  : type = Type.INCLUDE; break;
 					case "object"   : type = Type.OBJECT; break;
+					case "type"     : type = Type.TYPE; break;
 					default: type = Type.NAME; break;
 				}
 				

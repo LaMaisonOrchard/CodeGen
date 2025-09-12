@@ -3,8 +3,11 @@
 // This is a comment
 
 object(proto, enum);
+object(proto, typeDefn);
 object(proto, message);
 object(message, message);
+type(enum);
+type(typeDefn);
 
 include "fred" ;
 
@@ -13,11 +16,17 @@ here = uint32_t;
 
 there = 345.8 ;
 
+typeDefn here
+{
+   DESC = "Raw type";
+}
+
 enum billbo
 {
    TYPE = uint8_t;
+   DESC = "ENUM type";
    fred = 4;
-   biil = 1;
+   bill = 1;
 }
 
 message General
