@@ -312,6 +312,66 @@ Generated code
 User code
 ```
 
+## PROTO Data
+
+The **proto** files have a self defining syntax. The root object in a **proto** file is the **proto** object.
+The **object** definition defines which objects can be contain in other objects with **proto** being the root.
+
+```
+object(proto, enum);       // Top level enum objects
+object(proto, message);    // Top level message objects
+object(message, message);  // A message object can contain message objects
+```
+
+Some objects can be type definitions.
+
+```
+object(proto, enum);       // There can be a top level enum object
+type(enum);                // Enum objects define a type
+```
+
+An object can contain named values, named text and named lists. Aswell as **fields** and other **objects**.
+
+```
+message sendMe
+{
+    ID = 1;                     // Named value
+    DEST = control;             // Named text
+    SRC = [ ui, WiFi ];         // Named list
+    
+    uint8 src  = 1 "Source id"; // Full field
+    uint8 dest = 2;             // No optional text
+    uint8 value;                // No optional value or text
+    
+    message sub_part            // Sub-object
+    {
+        uint16 payload;
+        optional uint32 more_data;   // An optional field
+    }
+}
+```
+
+The first name in a **field** is a type and must be pre-declared using a type object.
+
+```
+object(proto, enum);    
+object(proto, typeDefn);
+type(enum) ;             
+type(typeDefn)  ; 
+
+enum errors   // enum type
+{
+    - OK = 0    "Passed correctly";              // The "-" in a field indicates that there is no type reference
+    - FAIL = 1  "Failed to function correctly";
+}
+
+typeDefn uint8  {}
+typeDefn uint16 {}           
+```
+
+Named text where the name is "TYPE" will also be used as a type refernce. But this is not checked while parsing the data
+in case the named text is not intended as a type reference.
+
 ## JSON Data
 
 
