@@ -400,7 +400,7 @@ You can even have named lists. Each element of the list defines a class of TEXT 
 on whether it is a text or numeric value.
 **Proto**
 ```
-harry = [ janet, lois, jean, brian, 78];
+harry = { janet, lois, jean, brian, 78};
 ```
 **Tmpl**
 ```
