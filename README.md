@@ -372,6 +372,102 @@ typeDefn uint16 {}
 Named text where the name is "TYPE" will also be used as a type refernce. But this is not checked while parsing the data
 in case the named text is not intended as a type reference.
 
+### Defined template items
+
+Each named value defines a block that is the value.
+
+**Proto**
+```
+fred = 7;
+```
+**Tmpl**
+```
+![FRED]!
+```
+Each named text defines a block that is the text. Named text with the name "TYPE" defines a type reference.
+**Proto**
+```
+harry = bill;
+TYPE = UINT8;
+```
+**Tmpl**
+```
+![HARRY]!
+![TYPE]!
+![USING TYPE NAME]!
+```
+You can even have named lists. Each element of the list defines a class of TEXT or VALUE and a block TEXT or VALUE depending
+on whether it is a text or numeric value.
+**Proto**
+```
+harry = [ janet, lois, jean, brian, 78];
+```
+**Tmpl**
+```
+![FOREACH HARRY CLASS]!
+```
+Each object defintion defines a list of sub objects. A FOREAH LEAF will return a list of the leaf objects of a given type. 
+An object defines a CLASS block which is the object type (uppercase and underscore) and a NAME block which is the instance name.
+**Proto**
+```
+message fred
+{
+}
+```
+**Tmpl**
+```
+![FOREACH MESSAGE CLASS]!
+![FOREACH LEAF MESSAGE NAME]!
+```
+An object can contain a list of FIELDs and BLOCKs. The BLOCK list is a list of named values and text. The named values define a
+block VALUE and class VALUE. The named block TEXT and a cless TEXT. They both define a block NAME.
+**proto**
+```
+message fred
+{
+    harry = 7;
+    lois = orchard;
+    UINT8 bill = 1 "The price";
+}
+```
+**Tmpl**
+```
+![FOREACH BLOCK NAME]!
+![FOREACH FIELD TYPE]!
+```
+A field defines servera; blocks and a type.
+**Proto**
+```
+UINT8 bill = 1 "The price";
+```
+**Tmpl**
+```
+![TYPE]!
+![NAME]!
+![VALUE]!
+![TEXT]!
+![OPTIONAL]!    TRUE/FALSE
+![USING TYPE NAME]!
+```
+Foreach list there is a block ending 'S' that is a value equal to the number of items in the list.
+**proto**
+```
+message fred
+{
+    harry = 7;
+    lois = orchard;
+    UINT8 bill = 1 "The price";
+}
+```
+**Tmpl**
+```
+![MESSAGES]!
+```
+
+
+
+
+
 ## JSON Data
 
 
