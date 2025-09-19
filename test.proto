@@ -21,6 +21,11 @@ typeDefn here
    DESC = "Raw type";
 }
 
+typeDefn uint8_t
+{
+   DESC = "Raw type";
+}
+
 enum billbo
 {
    TYPE = uint8_t;

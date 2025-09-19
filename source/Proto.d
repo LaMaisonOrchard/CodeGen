@@ -534,33 +534,39 @@ private
 			}
 			else
 			{
-				auto obj = new DataObject(this, this, input, classDefn, name);
+				auto obj = new DataObject(this, this, classDefn, name);
 
-				if (obj.HasError)
+				if (!IsValid("proto", classDefn.text))
 				{
-					Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
-				}
-				else if (!IsValid("proto", classDefn.text))
-				{
+                    obj.Parse(input);
 					Error(classDefn.posn, "Object " ~ classDefn.text ~ " not permitted in " ~ "proto");
 				}
-				else
-				{
-					auto p = obj.Class() in m_list;
-
-					if (p is null)
-					{
-						IDataBlock[] list;
-						m_list[obj.Class()] = list;
-					}
-
-					m_list[obj.Class()] ~= obj;
-                    
+				else 
+                {
                     if (m_types[obj.TrueClass()])
                     {
                         m_typeList[obj.Name()] = obj;
                     }
-				}
+                    
+                    obj.Parse(input);
+                    
+                    if (obj.HasError)
+                    {
+                        Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
+                    }
+                    else 
+                    {
+                        auto p = obj.Class() in m_list;
+
+                        if (p is null)
+                        {
+                            IDataBlock[] list;
+                            m_list[obj.Class()] = list;
+                        }
+
+                        m_list[obj.Class()] ~= obj;
+                    }
+                }
 			}
 		}
 
@@ -622,7 +628,7 @@ private
 
 	class DataObject : ProtoData
 	{
-		this(ProtoBlock root, ProtoData owner, Tokenise input, Token className, Token name)
+		this(ProtoBlock root, ProtoData owner, Token className, Token name)
 		{
 			m_root  = root;
 			m_owner = owner;
@@ -631,8 +637,6 @@ private
             m_name  = name.text;
 
 			m_textBlocks["NAME"] = name.text;
-
-			Parse(input);
 		}
 
 		bool HasError()
@@ -662,15 +666,7 @@ private
 		{
             if (item == "TYPE")
             {
-				auto p = "TYPE" in m_textBlocks;
-				if (p is null)
-				{
-					return null;
-				}
-				else
-				{
-                    return m_owner.GetType(*p);
-				}
+				return m_typeObj;
             }
             else if (item == "OWNER")
 			{
@@ -821,16 +817,7 @@ private
 					}
 					else
 					{
-						token = input.Get();
-						if (token.type != Type.NAME)
-						{
-							Error(token.posn, "Missing field name : [" ~ token.text ~ "]");
-							StripStatement(input, token);
-						}
-						else
-						{
-							ParseField(name, token, input, true);
-						}
+						ParseField(name, input, true);
 					}
 				}
 				else if (token.type == Type.NAME)
@@ -842,19 +829,24 @@ private
 					{
 						ParseAsign(name, input);
 					}
+					else if (token.type == Type.OPEN_SQR)
+					{
+                        input.Put(token);
+						ParseField(name, input, false);
+					}
 					else if (token.type == Type.NAME)
 					{
 						ParseObject(name, token, input);
 					}
 					else
 					{
-						Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
+						Error(token.posn, "Unexpected token : [" ~ token.text ~ "]"~token.type.to!string);
 						StripStatement(input, token);
 					}
 				}
 				else
 			    {
-					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
+					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]"~token.type.to!string);
 					StripStatement(input, token);
 			    }
 
@@ -865,7 +857,62 @@ private
 		void ParseAsign(Token name, Tokenise input)
 		{
 			auto token = input.Get();
-			if (token.type == Type.OPEN_BRACE)
+            
+            if (name.text == "TYPE")
+            {
+                // Parse type value
+                if (token.type != Type.NAME)
+                {
+                    Error(token.posn, "Missing type name (expected <name>)");
+                }
+                else
+                {
+                    auto typeObj = GetType(token.text);
+                    if (typeObj is null)
+                    {
+                        Error(m_posn, "Undefined type : " ~ token.text);
+                    }
+                    else
+                    {
+                        string typeName = token.text;
+                            
+                        token = input.Get();
+                        if (token.type == Type.END_STATEMENT)
+                        {
+                            input.Put(token);
+                            m_typeObj = typeObj;
+                        }
+                        else if (token.type == Type.OPEN_SQR)
+                        {
+                            typeName ~= "[";
+                        
+                            token = input.Get();
+                            if (token.type == Type.VALUE)
+                            {
+                                typeName ~= token.text;
+                                m_typeObj = new FixedArray(name, typeObj, token.text);
+                                token = input.Get();
+                            }
+                            else
+                            {
+                                m_typeObj = new VarArray(name, typeObj);
+                            }
+                            
+                            if (token.type != Type.CLOSE_SQR)
+                            {
+                                Error(token.posn, "Unclosed array definition : " ~ token.text);
+                                StripStatement(input, token);
+                            }
+                        }
+                        else
+                        {
+                            Error(token.posn, "Unexpected token : " ~ token.text);
+                        }
+                        AsignText(name, typeName);
+                    }
+                }
+            }
+			else if (token.type == Type.OPEN_BRACE)
 			{
 				ParseList(name, input);
 				return;
@@ -986,21 +1033,26 @@ private
 		{
 			auto token = input.Get();
 
-			if (token.type == Type.ASIGN)
+			if ((token.type == Type.ASIGN) || 
+                (token.type == Type.END_STATEMENT) ||
+                (token.type == Type.NAME) ||
+			    (token.type == Type.TEXT))
 			{
+                // Field definition
+                
+                IDataBlock typeObj = null;
+                if ((classDefn.text != "-") &&
+                    (classDefn.text != "_"))
+                {
+                    typeObj = GetType(classDefn.text);
+                    if (typeObj is null)
+                    {
+                        Error(m_posn, "Undefined type : " ~ classDefn.text);
+                    }
+                }
+            
 				input.Put(token);
-				ParseField(classDefn, name, input, false);
-			}
-			else if (token.type == Type.END_STATEMENT)
-			{
-				input.Put(token);
-				ParseField(classDefn, name, input, false);
-			}
-			else if ((token.type == Type.NAME) ||
-			         (token.type == Type.TEXT))
-			{
-				input.Put(token);
-				ParseField(classDefn, name, input, false);
+				ParseField2(classDefn.text, typeObj, name, input, false);
 			}
 			else if (token.type != Type.OPEN_BRACE)
 			{
@@ -1008,39 +1060,107 @@ private
 			}
 			else
 			{
-				auto obj = new DataObject(m_root, this, input, classDefn, name);
+				auto obj = new DataObject(m_root, this, classDefn, name);
 
-				if (obj.HasError)
+				if (!m_root.IsValid(m_class, classDefn.text))
 				{
-					Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
-				}
-				else if (!m_root.IsValid(m_class, classDefn.text))
-				{
+                    obj.Parse(input);
 					Error(classDefn.posn, "Object " ~ classDefn.text ~ " not permitted in " ~ m_class);
 				}
 				else
-				{
-					auto p = obj.Class() in m_list;
-
-					if (p is null)
-					{
-						IDataBlock[] list;
-						m_list[obj.Class()] = list;
-					}
-
-					m_list[obj.Class()] ~= obj;
-
-					m_list[obj.Class()] ~= obj;
-                    
+                {
                     if (m_root.m_types[obj.TrueClass()])
                     {
                         m_typeList[obj.Name()] = obj;
                     }
-				}
+                    
+                    obj.Parse(input);
+                    
+                    if (obj.HasError)
+                    {
+                        Error(classDefn.posn, "Illegal " ~ classDefn.text ~ " definition");
+                    }
+                    else 
+                    {
+                        auto p = obj.Class() in m_list;
+
+                        if (p is null)
+                        {
+                            IDataBlock[] list;
+                            m_list[obj.Class()] = list;
+                        }
+
+                        m_list[obj.Class()] ~= obj;
+
+                        m_list[obj.Class()] ~= obj;
+                        
+                    }
+                }
 			}
 		}
 
-		void ParseField(Token type, Token name, Tokenise input, bool optional)
+		void ParseField(Token type, Tokenise input, bool optional)
+		{
+			auto token = input.Get();
+            
+            IDataBlock typeObj = null;
+            if ((type.text != "-") &&
+                (type.text != "_"))
+            {
+                typeObj = GetType(type.text);
+                if (typeObj is null)
+                {
+                    Error(m_posn, "Undefined type : " ~ type.text);
+                }
+            }
+
+			if (token.type == Type.NAME)
+			{
+                ParseField2(type.text, typeObj, token, input, optional);
+            }
+			else if (token.type == Type.OPEN_SQR)
+			{
+                string typeName = type.text ~ "[";
+            
+                token = input.Get();
+                if (token.type == Type.VALUE)
+                {
+                    typeName ~= token.text;
+                    typeObj = new FixedArray(type, typeObj, token.text);
+                    token = input.Get();
+                }
+                else
+                {
+                    typeObj = new VarArray(type, typeObj);
+                }
+                
+                if (token.type != Type.CLOSE_SQR)
+                {
+                    Error(token.posn, "Unclosed array definition : " ~ token.text);
+                    StripStatement(input, token);
+                }
+                else
+                {
+                    typeName ~= "]";
+                    Token name = input.Get();
+                    if (name.type == Type.NAME)
+                    {
+                        ParseField2(typeName, typeObj, name, input, optional);
+                    }
+                    else
+                    {
+                        Error(token.posn, "Missing field name : " ~ name.text);
+                        StripStatement(input, name);
+                    }
+                }
+            }
+            else
+            {
+				Error(token.posn, "Unexpected token : " ~ token.text);
+            }
+        }
+
+		void ParseField2(string type, IDataBlock typeObj, Token name, Tokenise input, bool optional)
 		{
 			auto token = input.Get();
 
@@ -1057,24 +1177,24 @@ private
 					if ((token.type == Type.NAME) ||
 						(token.type == Type.TEXT))
 					{
-						AddField(type.text, name, value.text, token.text, optional);
+						AddField(type, typeObj, name, value.text, token.text, optional);
 					}
 					else
 					{
 						input.Put(token);
-						AddField(type.text, name, value.text, "", optional);
+						AddField(type, typeObj, name, value.text, "", optional);
 					}
 				}
 			}
 			else if (token.type == Type.END_STATEMENT)
 			{
 				input.Put(token);
-				AddField(type.text, name, "", "", optional);
+				AddField(type.text, typeObj, name, "", "", optional);
 			}
 			else if ((token.type == Type.NAME) ||
 			         (token.type == Type.TEXT))
 			{
-				AddField(type.text, name, "", token.text, optional);
+				AddField(type, typeObj, name, "", token.text, optional);
 			}
 			else
 			{
@@ -1088,9 +1208,9 @@ private
 			}
 		}
 
-		void AddField(string type, Token name, string value, string text, bool optional)
+		void AddField(string type, IDataBlock typeObj, Token name, string value, string text, bool optional)
 		{
-			m_fields ~= new Field(type, name, this, value, text, optional);
+			m_fields ~= new Field(type, typeObj, name, this, value, text, optional);
 		}
 
 		string[string]       m_textBlocks;
@@ -1098,6 +1218,7 @@ private
 		IDataBlock[][string] m_list;
 		IDataBlock[]         m_fields;
 		IDataBlock[]         m_blocks;
+		IDataBlock           m_typeObj;
 
 		ProtoBlock  m_root;
 
@@ -1108,23 +1229,16 @@ private
 
 	class Field : IDataBlock
 	{
-		this(string type, Token name, DataObject owner, string value, string text, bool optional)
+		this(string type, IDataBlock typeObj, Token name, DataObject owner, string value, string text, bool optional)
 		{
 			m_posn = name.posn;
 			m_type = type;
+            m_typeObj = typeObj;
 			m_name = name.text;
             m_owner = owner;
 			m_value = value;
 			m_text = text;
 			m_optional = optional;
-            
-            if ((m_type != "-") && (m_type != "_"))
-            {
-                if (m_owner.GetType(m_type) is null)
-                {
-                    Error(m_posn, "Undefined type : " ~ m_type);
-                }
-            }
 		}
 
 		bool HasError()
@@ -1149,7 +1263,7 @@ private
 		{
             if (item == "TYPE")
             {
-                return m_owner.GetType(m_type);
+                return m_typeObj;
             }
             else
             {
@@ -1210,8 +1324,138 @@ private
         DataObject m_owner;
 		string     m_value;
 		string     m_text;
+        IDataBlock m_typeObj;
 		bool       m_optional;
 	}
+
+	class VarArray : IDataBlock
+	{
+		this(Token type, IDataBlock typeObj)
+		{
+            m_posn = type.posn;
+			m_typeObj = typeObj;
+		}
+
+		bool HasError()
+		{
+			return false;
+		}
+
+		// A string to identify this type of data object
+		override string Class()
+		{
+			return "VAR_ARRAY";
+		}
+
+		// Position of this in the input file
+		override string Posn()
+		{
+			return m_posn;
+		}
+
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+            if (item == "TYPE")
+            {
+                return m_typeObj;
+            }
+			return null;
+		}
+
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+		{
+			return tuple(false, DList!IDataBlock());
+		}
+
+		// Expand the block as defined by the data object
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+		{
+			return false;
+		}
+
+		override void Dump(BaseOutput file)
+		{
+		}
+
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+		}
+
+		string m_posn;
+		IDataBlock m_typeObj;
+	}
+
+	class FixedArray : IDataBlock
+	{
+		this(Token type, IDataBlock typeObj, string size)
+		{
+            m_posn = type.posn;
+			m_typeObj = typeObj;;
+			m_size = size;
+		}
+
+		bool HasError()
+		{
+			return false;
+		}
+
+		// A string to identify this type of data object
+		override string Class()
+		{
+			return "FIXED_ARRAY";
+		}
+
+		// Position of this in the input file
+		override string Posn()
+		{
+			return m_posn;
+		}
+
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+            if (item == "TYPE")
+            {
+                return m_typeObj;
+            }
+			return null;
+		}
+
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+		{
+			return tuple(false, DList!IDataBlock());
+		}
+
+		// Expand the block as defined by the data object
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+		{
+            if (name == "SIZE")
+            {
+				output.Write(FormatValue(Evaluate(m_size), subtype));
+				return true;
+            }
+            
+			return false;
+		}
+
+		override void Dump(BaseOutput file)
+		{
+		}
+
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+		}
+
+		string m_posn;
+		string m_size;
+		IDataBlock m_typeObj;
+	}
+
 
 	class TextObj : IDataBlock
 	{
@@ -1375,6 +1619,8 @@ private
 		CLOSE,
 		OPEN_BRACE,
 		CLOSE_BRACE,
+		OPEN_SQR,
+		CLOSE_SQR,
 		SEP,
 		NAME,
 		INCLUDE,
@@ -1467,6 +1713,14 @@ private
 				{
 					return Token(Type.END_STATEMENT, ";", m_input.Posn());
 				}
+				else if (ch == '[')
+				{
+					return Token(Type.OPEN_SQR, "[", m_input.Posn());
+				}
+				else if (ch == ']')
+				{
+					return Token(Type.CLOSE_SQR, "]", m_input.Posn());
+				}
 				else if (ch == '{')
 				{
 					return Token(Type.OPEN_BRACE, "{", m_input.Posn());
@@ -1543,6 +1797,8 @@ private
 			    (ch != ';')  &&
 			    (ch != '{')  &&
 			    (ch != '}')  &&
+			    (ch != '[')  &&
+			    (ch != ']')  &&
 			    (ch != '(')  &&
 			    (ch != ')')  &&
 			    (ch != ',')  &&
@@ -1579,6 +1835,8 @@ private
 			    (ch != '"')  &&
 			    (ch != '=')  &&
 			    (ch != ';')  &&
+			    (ch != '[')  &&
+			    (ch != ']')  &&
 			    (ch != '{')  &&
 			    (ch != '}')  &&
 			    (ch != '(')  &&
@@ -1622,7 +1880,7 @@ private
 
 				if (value == "-")
 				{
-					return ParseText(ch);
+					return ParseName(ch);
 				}
 
 				m_input.Put(ch);
@@ -1691,6 +1949,7 @@ private
 {
 	unittest
 	{
+        writeln("Proto test 1");
 		auto text = "";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1706,6 +1965,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 2");
 		auto text = " _fredFred;Harry ";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1729,6 +1989,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 3");
 		auto text = " _fredFred ; Harry ";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1752,6 +2013,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 4");
 		auto text = " {;},() ";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1787,6 +2049,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 5");
 		auto text = " fred optional include object ";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1814,6 +2077,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 6");
 		auto text = " fred\"harry lois\"bill ";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1837,6 +2101,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 7");
 		auto text = " fred\"harry lois";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1856,6 +2121,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 8");
 		auto text = " fred\"harry\\r\\n\\\\ \\\"lois\" bill";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1879,6 +2145,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 9");
 		auto text = " fred\"harry lois\n bill";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1903,6 +2170,7 @@ private
 	
 	unittest
 	{
+        writeln("Proto test 10");
 		auto text = " fred\"harry lois\r bill";
 		auto tokeniser = new Tokenise(new InputStack(new LitteralInput(text)));
 		
@@ -1923,5 +2191,181 @@ private
 		
 		assert(tokeniser.HasError());
 	}
+    
+	unittest
+	{
+        writeln("Proto test 11");
+		auto text = "object(proto, fred); object (fred,fred); fred bill {fred bill {}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FRED")[1].front.Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 12");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill lois;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 13");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill lois = 1;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 14");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill lois \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 15");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill lois = 1 \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 16");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill[] lois;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "VAR_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 17");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill[3] lois = 1;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FIXED_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 18");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill[] lois \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "VAR_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 19");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {bill[3] lois = 1 \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE").Class() == "FIXED_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 20");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {- lois = 1 \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") is null);
+    }
+    
+	unittest
+	{
+        writeln("Proto test 21");
+		auto text = "object(proto, fred); object (fred,fred); type (fred); fred bill {_ lois = 1 \"hello\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "FIELD")[1].front.Using("TYPE") is null);
+    }
+    
+	unittest
+	{
+        writeln("Proto test 22");
+		auto text = "object(proto, fred); type (fred); fred bill {TYPE = bill;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE").Class() == "FRED");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 23");
+		auto text = "object(proto, fred); type (fred); fred bill { TYPE = bill[];}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE").Class() == "VAR_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 24");
+		auto text = "object(proto, fred); type (fred); fred bill { TYPE = bill[3];}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE") !is null);
+		assert(root.List(false, "FRED")[1].front.Using("TYPE").Class() == "FIXED_ARRAY");
+    }
 }
 
