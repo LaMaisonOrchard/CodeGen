@@ -689,6 +689,14 @@ private
 			{
 				return tuple(true, DList!IDataBlock(m_blocks));
 			}
+			else if (item == "HEADING")
+			{
+				return tuple(true, DList!IDataBlock(m_headings));
+			}
+			else if (item == "ROW")
+			{
+				return tuple(true, DList!IDataBlock(m_rows));
+			}
 			else
 			{
 				auto p = item in m_list;
@@ -748,6 +756,16 @@ private
 			else if (name == "BLOCKS")
 			{
 				output.Write(FormatValue(cast(long)m_blocks.length, subtype));
+				return true;
+			}
+			else if (name == "HEADINGS")
+			{
+				output.Write(FormatValue(cast(long)m_headings.length, subtype));
+				return true;
+			}
+			else if (name == "ROWS")
+			{
+				output.Write(FormatValue(cast(long)m_rows.length, subtype));
 				return true;
 			}
 			else if (name[$-1] == 'S')
@@ -844,9 +862,29 @@ private
 						StripStatement(input, token);
 					}
 				}
+                else if (token.type == Type.OPEN_BRACE)
+                {
+                    if (m_headingNames is null)
+                    {
+                        ParseHeading(token, input);
+                    }
+                    else
+                    {
+                        auto row = new Row(token, this, m_headingNames, input);
+                        
+                        if (row.HasError())
+                        {
+                            Error(token.posn, "Illegal row");
+                        }
+                        else
+                        {
+                            m_rows ~= row;
+                        }
+                    }
+                }
 				else
 			    {
-					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]"~token.type.to!string);
+					Error(token.posn, "Unexpected token : [" ~ token.text ~ "]");
 					StripStatement(input, token);
 			    }
 
@@ -1213,11 +1251,50 @@ private
 			m_fields ~= new Field(type, typeObj, name, this, value, text, optional);
 		}
 
+        void ParseHeading(Token token, Tokenise input)
+        {
+            while (token.type != Type.CLOSE_BRACE)
+            {
+                token = input.Get();
+            
+                if ((token.type == Type.NAME) ||
+                    (token.type == Type.TEXT))
+                {
+                    m_headingNames ~= token.text;
+                    m_headings ~= new TextObj(token);
+                }
+                else
+                {
+					Error(token.posn, "Unexpected heading : [" ~ token.text ~ "]");
+                    while (token.type != Type.CLOSE_BRACE)
+                    {
+                        token = input.Get();
+                    }
+                    return;
+                }
+                
+                token = input.Get();
+                if ((token.type != Type.SEP) ||
+                    (token.type != Type.CLOSE_BRACE))
+                {
+					Error(token.posn, "Unexpected heading : [" ~ token.text ~ "]");
+                    while (token.type != Type.CLOSE_BRACE)
+                    {
+                        token = input.Get();
+                    }
+                    return;
+                }
+            }
+        }
+        
 		string[string]       m_textBlocks;
 		string[string]       m_valueBlocks;
 		IDataBlock[][string] m_list;
 		IDataBlock[]         m_fields;
 		IDataBlock[]         m_blocks;
+		IDataBlock[]         m_headings;
+		IDataBlock[]         m_rows;
+        string[]             m_headingNames;
 		IDataBlock           m_typeObj;
 
 		ProtoBlock  m_root;
@@ -1615,6 +1692,187 @@ private
 		string m_posn;
 		string m_name;
 		string m_text;
+	}
+	
+	class Row : ProtoData
+	{
+		this(Token token, ProtoData owner, string[] headings, Tokenise input)
+		{
+			m_posn  = token.posn;
+            m_owner = owner;
+            m_error = false;
+            Parse(token, headings, input);
+		}
+
+		bool HasError()
+		{
+			return m_error;
+		}
+
+		// A string to identify this type of data object
+		override string Class()
+		{
+			return "ROW";
+		}
+
+		// Position of this in the input file
+		override string Posn()
+		{
+			return m_posn;
+		}
+
+		// Get a sub-item of this data item
+		override IDataBlock Using(string item)
+		{
+            if (item == "TYPE")
+            {
+                return m_typeObj;
+            }
+			return null;
+		}
+
+		// Get a sub-item of this data item
+		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
+		{
+            if (item == "ENTRY")
+            {
+                return tuple(false, DList!IDataBlock(m_entries));
+            }
+			return tuple(false, DList!IDataBlock());
+		}
+
+		// Expand the block as defined by the data object
+		override bool DoBlock(BaseOutput output, string name, string subtype)
+		{
+            if (name == "ENTRIES")
+            {
+                output.Write(FormatValue(m_entries.length, subtype));
+                return true;
+            }
+            else
+            {
+                auto p = name in m_textBlocks;
+
+                if (p is null)
+                {
+                    p = name in m_valueBlocks;
+                    if (p is null)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        string value = *p;
+                        output.Write(FormatValue(Evaluate(value), subtype));
+                        return true;
+                    }
+                }
+                else
+                {
+                    string value = *p;
+                    output.Write(FormatName(value, subtype));
+                    return true;
+                }
+            }
+		}
+
+		override void Dump(BaseOutput file)
+		{
+		}
+
+		void Error(string posn, string message)
+		{
+			writeln(posn, message);
+            m_error = true;
+		}
+        
+        void Parse(Token token, string[] headings, Tokenise input)
+        {
+            int idx = 0;
+            while (token.type != Type.CLOSE_BRACE)
+            {
+                token = input.Get();
+            
+                if (idx >= headings.length)
+                {
+					Error(token.posn, "To many row entries");
+                }
+                else if (FormatName(headings[idx], "UPPER1") == "TYPE")
+                {
+                    ProtoData type; 
+                    if (token.type != Type.NAME)
+                    {
+                        Error(token.posn, "Illegal type name : [" ~ token.text ~ "]");
+                        while (token.type != Type.CLOSE_BRACE)
+                        {
+                            token = input.Get();
+                        }
+                        return;
+                    }
+                    else if ((type = GetType(token.text)) is null)
+                    {
+                        Error(token.posn, "Undefined type : [" ~ token.text ~ "]");
+                        while (token.type != Type.CLOSE_BRACE)
+                        {
+                            token = input.Get();
+                        }
+                        return;
+                    }
+                    else
+                    {
+                        string typeText = token.text;
+                        
+                        // TODO - Handle type definitions
+                        
+                        m_textBlocks[FormatName(headings[idx], "UPPER1")] = typeText;
+                    }
+                }
+                else if ((token.type == Type.NAME) ||
+                         (token.type == Type.TEXT))
+                {
+                    m_textBlocks[FormatName(headings[idx], "UPPER1")] = token.text;
+                    m_entries ~= new TextObj(token);
+                }
+                else if (token.type == Type.VALUE)
+                {
+                    m_valueBlocks[FormatName(headings[idx], "UPPER1")] = token.text;
+                    m_entries ~= new ValueObj(token);
+                }
+                else
+                {
+					Error(token.posn, "Unexpected row value : [" ~ token.text ~ "]");
+                    while (token.type != Type.CLOSE_BRACE)
+                    {
+                        token = input.Get();
+                    }
+                    return;
+                }
+                
+                token = input.Get();
+                if ((token.type != Type.SEP) ||
+                    (token.type != Type.CLOSE_BRACE))
+                {
+					Error(token.posn, "Unexpected row value : [" ~ token.text ~ "]");
+                    while (token.type != Type.CLOSE_BRACE)
+                    {
+                        token = input.Get();
+                    }
+                    return;
+                }
+            }
+            
+            if (idx < headings.length)
+            {
+                Error(token.posn, "Missing row entries");
+            }
+        }
+
+		string m_posn;
+		string[string] m_textBlocks;
+		string[string] m_valueBlocks;
+        IDataBlock     m_typeObj;
+        IDataBlock[]   m_entries;
+        bool   m_error;
 	}
 	
 	enum Type
