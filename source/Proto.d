@@ -1274,7 +1274,7 @@ private
                 }
                 
                 token = input.Get();
-                if ((token.type != Type.SEP) ||
+                if ((token.type != Type.SEP) &&
                     (token.type != Type.CLOSE_BRACE))
                 {
 					Error(token.posn, "Unexpected heading : [" ~ token.text ~ "]");
@@ -1799,7 +1799,7 @@ private
                 }
                 else if (FormatName(headings[idx], "UPPER1") == "TYPE")
                 {
-                    ProtoData type; 
+                    ProtoData typeObj; 
                     if (token.type != Type.NAME)
                     {
                         Error(token.posn, "Illegal type name : [" ~ token.text ~ "]");
@@ -1809,7 +1809,7 @@ private
                         }
                         return;
                     }
-                    else if ((type = GetType(token.text)) is null)
+                    else if ((typeObj = GetType(token.text)) is null)
                     {
                         Error(token.posn, "Undefined type : [" ~ token.text ~ "]");
                         while (token.type != Type.CLOSE_BRACE)
@@ -1820,11 +1820,48 @@ private
                     }
                     else
                     {
-                        string typeText = token.text;
+                        string typeName = token.text;
                         
-                        // TODO - Handle type definitions
+                        token = input.Get();
                         
-                        m_textBlocks[FormatName(headings[idx], "UPPER1")] = typeText;
+                        if ((token.type == Type.SEP)||
+                            (token.type == Type.CLOSE_BRACE))
+                        {
+                            input.Put(token);
+                            m_typeObj = typeObj;
+                        }
+                        else if (token.type == Type.OPEN_SQR)
+                        {
+                            typeName ~= "[";
+                        
+                            token = input.Get();
+                            if (token.type == Type.VALUE)
+                            {
+                                typeName ~= token.text;
+                                m_typeObj = new FixedArray(token, typeObj, token.text);
+                                token = input.Get();
+                            }
+                            else
+                            {
+                                m_typeObj = new VarArray(token, typeObj);
+                            }
+                            
+                            if (token.type != Type.CLOSE_SQR)
+                            {
+                                Error(token.posn, "Unclosed array definition : " ~ token.text);
+                                input.Put(token);
+                            }
+                            else
+                            {
+                                typeName ~= "]";
+                            }
+                        }
+                        else
+                        {
+                            Error(token.posn, "Unexpected token : " ~ token.text);
+                        }
+                        
+                        m_textBlocks[FormatName(headings[idx], "UPPER1")] = typeName;
                     }
                 }
                 else if ((token.type == Type.NAME) ||
@@ -1849,7 +1886,7 @@ private
                 }
                 
                 token = input.Get();
-                if ((token.type != Type.SEP) ||
+                if ((token.type != Type.SEP) &&
                     (token.type != Type.CLOSE_BRACE))
                 {
 					Error(token.posn, "Unexpected row value : [" ~ token.text ~ "]");
@@ -1859,6 +1896,8 @@ private
                     }
                     return;
                 }
+                
+                idx += 1;
             }
             
             if (idx < headings.length)
@@ -2630,6 +2669,54 @@ private
 		assert(root.List(false, "FRED")[0]);
 		assert(root.List(false, "FRED")[1].front.Using("TYPE") !is null);
 		assert(root.List(false, "FRED")[1].front.Using("TYPE").Class() == "FIXED_ARRAY");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 25");
+		auto text = "object(proto, fred); type (fred); fred bill { {name, lois} {7,8}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "HEADING")[0]);
+		//assert(root.List(false, "FRED")[1].front.List(false, "HEADING")[1].length == 2);
+		assert(root.List(false, "FRED")[1].front.List(false, "ROW")[0]);
+		//assert(root.List(false, "FRED")[1].front.List(false, "ROW")[1].length == 1);
+		assert(root.List(false, "FRED")[1].front.List(false, "ROW")[1].front.Using("TYPE") is null);
+    }
+    
+	unittest
+	{
+        writeln("Proto test 26");
+		auto text = "object(proto, fred); type (fred); fred bill { {name, \"type\"} {1,bill} {2,bill[]} {3,bill[3]}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.List(false, "HEADING")[0]);
+		//assert(root.List(false, "FRED")[1].front.List(false, "HEADING")[1].length == 2);
+		assert(root.List(false, "FRED")[1].front.List(false, "ROW")[0]);
+		//assert(root.List(false, "FRED")[1].front.List(false, "ROW")[1].length == 1);
+		assert(root.List(false, "FRED")[1].front.List(false, "ROW")[1].front.Using("TYPE") !is null);
+    }
+    
+	unittest
+	{
+        writeln("Proto test 25");
+		auto text = "object(proto, fred); type (fred); fred bill { {name, value} {lois}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 26");
+		auto text = "object(proto, fred); type (fred); fred bill { {name, value} {lois, janet, mum}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+		assert(root.HasError());
     }
 }
 
