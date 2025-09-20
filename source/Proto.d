@@ -1588,6 +1588,12 @@ private
 				return true;
 			}
 
+			if (name == "TEXT")
+			{
+				output.Write(FormatName(m_text, subtype));
+				return true;
+			}
+
 			if (name == "VALUE")
 			{
 				output.Write(FormatValue(Evaluate(m_text), subtype));

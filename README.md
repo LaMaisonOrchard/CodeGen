@@ -351,7 +351,8 @@ message sendMe
 }
 ```
 
-The first name in a **field** is a type and must be pre-declared using a type object.
+The first name in a **field** is a type and must be a valid pre-declared type defined using a type object. Array types
+are of the form **<type>[]** or **<type>[<value>]**.
 
 ```
 object(proto, enum);    
@@ -359,18 +360,26 @@ object(proto, typeDefn);
 type(enum) ;             
 type(typeDefn)  ; 
 
+typeDefn uint8  {}
+typeDefn uint16 {}  
+
 enum errors   // enum type
 {
     - OK = 0    "Passed correctly";              // The "-" in a field indicates that there is no type reference
     - FAIL = 1  "Failed to function correctly";
 }
 
-typeDefn uint8  {}
-typeDefn uint16 {}           
+message sub_part            // Sub-object
+{
+    uint16 length;
+    uint8[8] data
+    uint8[] more_data;
+}         
 ```
 
-Named text where the name is "TYPE" will also be used as a type refernce. But this is not checked while parsing the data
-in case the named text is not intended as a type reference.
+Named text where the name is "TYPE" must also define a valid type. Types referenced via a bnamed block or field Typecan be accessed
+using **![USING TYPE <block>]!**. The underlying type of an array is accessed the the same way. A fixed size array has
+a **CLASS** of **FIXED_ARRAY** and a block of **SIZE**. A variable sized array has a **CLASS** of **VAR_ARRAY**.
 
 ### Defined template items
 
@@ -387,6 +396,10 @@ fred = 7;
 Each named text defines a block that is the text. Named text with the name "TYPE" defines a type reference.
 **Proto**
 ```
+typeDefn UNIT8
+{
+    CTYPE=uint8_t;
+}
 harry = bill;
 TYPE = UINT8;
 ```
@@ -394,10 +407,9 @@ TYPE = UINT8;
 ```
 ![HARRY]!
 ![TYPE]!
-![USING TYPE NAME]!
+![USING TYPE CTYPE]!
 ```
-You can even have named lists. Each element of the list defines a class of TEXT or VALUE and a block TEXT or VALUE depending
-on whether it is a text or numeric value.
+You can even have named lists. Each element of the list defines a class of TEXT or VALUE and a block TEXT. A value also has a block VALUE.
 **Proto**
 ```
 harry = { janet, lois, jean, brian, 78};
