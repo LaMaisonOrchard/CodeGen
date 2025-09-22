@@ -1,0 +1,31 @@
+
+
+// This is a comment
+
+
+include Common.proto ;
+
+FixedArray payload
+{
+    TYPE = UINT8;
+    SIZE = 256;
+}
+
+enum Error
+{
+   TYPE = UINT8;
+   - OK       = 0 "Success";
+   - HW_ERROR = 1 "Hardware fault";
+   - SW_ERROR = 2 "Software fault";
+}
+
+message SignalError
+{
+	ID = 9;
+	
+	message UNACK
+	{
+        payload[] failingPayloads;
+		Error[]   status;
+	}
+}

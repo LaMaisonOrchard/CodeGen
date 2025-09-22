@@ -171,49 +171,39 @@ private
 		// Get a sub-item of this data item
 		override Tuple!(bool, DList!IDataBlock) List(bool leaf, string item)
 		{
-			auto p = item in m_list;
-			
-			if (p is null)
-			{
-				return tuple(false, DList!IDataBlock());
-			}
-			else if (!leaf)
-			{
-				return tuple(true, DList!IDataBlock(*p));
-			}
-			else
-			{
-				// Find the leaf nodes
-				Appender!(IDataBlock[]) leafList;
-				
-				foreach (entry ; *p)
-				{
-					auto list = entry.List(leaf, item);
-					if (!list[0])
-					{
-						// This is a leaf entry
-						leafList ~= entry;
-					}
-					else
-					{
-						bool isLeafy = true;
-						foreach (leafy ; list[1])
-						{
-							// Add the leaf entries in this nodes
-							isLeafy = false;
-							leafList ~= leafy;
-						}
-						
-						if (isLeafy)
-						{
-							// This is a leaf node
-							leafList ~= entry;
-						}
-					}
-				}
-				
-				return tuple(true, DList!IDataBlock(leafList[]));
-			}
+            auto p = item in m_list;
+                
+            if (p is null)
+            {
+                return tuple(false, DList!IDataBlock());
+            }
+            else if (!leaf)
+            {
+                return tuple(true, DList!IDataBlock(*p));
+            }
+            else
+            {
+                Appender!(IDataBlock[]) leafList;
+                    
+                foreach (entry ; *p)
+                {
+                    auto p2 = entry.List(false, item);
+                    if (p2[0])
+                    {
+                        foreach (entry2 ; entry.List(true, item)[1])
+                        {
+                            // This is a leaf entry
+                            leafList ~= entry2;
+                        }
+                    }
+                    else
+                    {
+                        leafList ~= entry;
+                    }
+                }
+                    
+                return tuple(true, DList!IDataBlock(leafList[]));
+            }
 		}
 		
 		// Expand the block as defined by the data object
@@ -402,6 +392,7 @@ private
 		void ParseInclude(Tokenise input)
 		{
 			auto token = input.Get();
+            string fileName = "";
 
 			if ((token.type != Type.NAME) &&
 			    (token.type != Type.TEXT))
@@ -410,7 +401,7 @@ private
 			}
 			else
 			{
-				input.Push(token.text);
+				fileName = token.text;
 			}
 
 			token = input.Get();
@@ -419,6 +410,14 @@ private
 				Error(token.posn, "Unterminated include statement (expected ; )");
 				StripStatement(input, token);
 			}
+            else if (fileName == "")
+            {
+				Error(token.posn, "Undefined include file");
+            }
+            else
+            {
+				input.Push(fileName);
+            }
 		}
 
 		void ParseAsign(Token name, Tokenise input)
@@ -699,49 +698,40 @@ private
 			}
 			else
 			{
-				auto p = item in m_list;
-
-				if (p is null)
-				{
-					return tuple(false, DList!IDataBlock());   // Allow missing lists
-				}
-				else if (!leaf)
-				{
-					return tuple(true, DList!IDataBlock(*p));
-				}
-				else
-				{
-					// Find the leaf nodes
-					Appender!(IDataBlock[]) leafList;
-					
-					foreach (entry ; *p)
-					{
-						auto list = entry.List(leaf, item);
-						if (!list[0])
-						{
-							// This is a leaf entry
-							leafList ~= entry;
-						}
-						else
-						{
-							bool isLeafy = true;
-							foreach (leafy ; list[1])
-							{
-								// Add the leaf entries in this nodes
-								isLeafy = false;
-								leafList ~= leafy;
-							}
-							
-							if (isLeafy)
-							{
-								// This is a leaf node
-								leafList ~= entry;
-							}
-						}
-					}
-					
-					return tuple(true, DList!IDataBlock(leafList[]));
-				}
+                auto p = item in m_list;
+                
+                
+                if (p is null)
+                {
+                    return tuple(false, DList!IDataBlock());
+                }
+                else if (!leaf)
+                {
+                    return tuple(true, DList!IDataBlock(*p));
+                }
+                else
+                {
+                    Appender!(IDataBlock[]) leafList;
+                        
+                    foreach (entry ; *p)
+                    {
+                        auto p2 = entry.List(false, item);
+                        if (p2[0])
+                        {
+                            foreach (entry2 ; entry.List(true, item)[1])
+                            {
+                                // This is a leaf entry
+                                leafList ~= entry2;
+                            }
+                        }
+                        else
+                        {
+                            leafList ~= entry;
+                        }
+                    }
+                        
+                    return tuple(true, DList!IDataBlock(leafList[]));
+                }
 			}
 		}
 
@@ -1128,10 +1118,7 @@ private
                             m_list[obj.Class()] = list;
                         }
 
-                        m_list[obj.Class()] ~= obj;
-
-                        m_list[obj.Class()] ~= obj;
-                        
+                        m_list[obj.Class()] ~= obj;                        
                     }
                 }
 			}

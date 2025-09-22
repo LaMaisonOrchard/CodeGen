@@ -1,0 +1,21 @@
+
+
+// This is a comment
+
+object(proto,   enum);
+object(proto,   message);
+object(proto,   baseType);
+object(proto,   FixedArray);
+object(message, message);
+
+type(enum);
+type(baseType);
+type(FixedArray);
+
+
+baseType UINT8  {CTYPE =uint8_t;}
+baseType UINT16 {CTYPE =uint16_t;}
+baseType UINT32 {CTYPE =uint32_t;}
+baseType INT8   {CTYPE =int8_t;}
+baseType INT16  {CTYPE =int16_t;}
+baseType INT32  {CTYPE =int32_t;}

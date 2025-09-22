@@ -1,0 +1,11 @@
+///////////////////////////////////////////////////////////////////////
+//
+// Common utility blocks
+//
+
+!BLK TYPE_NAME=![USING TYPE _TYPE_NAME:(CLASS)]!
+
+!BLK _TYPE_NAME:BASE_TYPE=![CTYPE]!
+!BLK _TYPE_NAME:ENUM=![NAME:PASCAL]!
+!BLK _TYPE_NAME:FIXED_ARRAY=std::array<![TYPE_NAME]!, ![SIZE]!>
+!BLK _TYPE_NAME:VAR_ARRAY=std::vector<![TYPE_NAME]!>

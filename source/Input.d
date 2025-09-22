@@ -73,7 +73,12 @@ public
 			}
 			else 
 			{
-				return m_stack.front().Get();
+                char ch = m_stack.front().Get();
+                while ((ch == '\0') && !m_stack.empty())
+                {
+                    ch = Get();
+                }
+				return ch;
 			}
 		}
 		

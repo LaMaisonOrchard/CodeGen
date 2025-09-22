@@ -330,7 +330,7 @@ object(proto, enum);       // There can be a top level enum object
 type(enum);                // Enum objects define a type
 ```
 
-An object can contain named values, named text and named lists. Aswell as **fields** and other **objects**.
+An object can contain named values, named text and named lists. Aswell as **fields**, **tables** and other **objects**.
 
 ```
 message sendMe
@@ -343,6 +343,10 @@ message sendMe
     uint8 dest = 2;             // No optional text
     uint8 value;                // No optional value or text
     
+    {Type,     Name,  Description)
+    {uint8,    Fred,  "Just an entry}
+    {unit8[8], Harry, "Another entry")
+    
     message sub_part            // Sub-object
     {
         uint16 payload;
@@ -353,6 +357,12 @@ message sendMe
 
 The first name in a **field** is a type and must be a valid pre-declared type defined using a type object. Array types
 are of the form **<type>[]** or **<type>[<value>]**.
+
+The first row in a table is the heading. The headings form a list **HEADING** of item withc class **TEXT** and block **TEST**.
+The subsequent rows but have the same number of enties as the headings and define a lis **ROW**. Eecho row entry has a class of 
+**ROW** a list of **ENTRY** where each entry has a class of **TEXT** or **VALUE** and a block of **TEXT** or **VALUE**.
+The **ROW** also has a block for each **HEADING** which names the entry for that **HEADING**. The entry for a **HEADING**
+**TYPE** must be a valid type and is accessable as **![USING TYPE ...]!**.
 
 ```
 object(proto, enum);    
