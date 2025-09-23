@@ -4,6 +4,7 @@
 
 object(proto,   enum);
 object(proto,   message);
+object(proto,   bitField);
 object(proto,   baseType);
 object(proto,   FixedArray);
 object(message, message);

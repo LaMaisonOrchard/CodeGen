@@ -29,3 +29,11 @@ message SignalError
 		Error[]   status;
 	}
 }
+
+bitField Status
+{
+    TYPE = UINT16;
+    {Status, Bits, "Bit Description"}
+    {Running, 0, "It is running"}
+    {Idle,    1, "It is waiting for instructions"}
+}

@@ -11,6 +11,7 @@
 !BLK DO_FILE
 ![FOREACH ENUM DEFN_ENUM]!
 ![FOREACH LEAF MESSAGE DEFN_MSG]!
+![FOREACH LEAF BIT_FIELD DEFN_BIT]!
 !END
 
 //// DEFN_ENUM /////////////////////////////////////////////////
@@ -42,3 +43,16 @@ struct ![USING OWNER NAME:PASCAL]!![NAME:PASCAL]!
 !BLK MSG_TYPE=![_MSG_TYPE:(OPTIONAL)]!
 !BLK _MSG_TYPE:TRUE=std::optional<![TYPE_NAME]!>
 !BLK _MSG_TYPE:FALSE=![TYPE_NAME]!
+
+//// DEFN_BIT /////////////////////////////////////////////////
+!BLK DEFN_BIT
+namespace ![NAME:UPPER1]!
+{
+![FOREACH ROW BIT_FIELD]!};
+
+!END
+
+//// BIT_FIELD /////////////////////////////////////////////////
+!BLK BIT_FIELD
+   ![USING PREV TYPE_NAME]! ![STATUS:UPPER1]! = (1 << ![BITS]!);  // ![BIT_DESCRIPTION]!
+!END
