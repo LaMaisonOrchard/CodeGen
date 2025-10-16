@@ -211,6 +211,10 @@ public
 					{
 						// Block is handled by the data item
 					}
+					else if (name == "FILE_NAME")
+					{
+						output.Write(FormatName(this.outer.m_data.FileName(), subtype));
+					}
 					else if (BuiltIn(output, name, subtype))
 					{
 						// Block is handled by the built in blocks

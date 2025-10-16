@@ -18,6 +18,9 @@ public
 	{
 		// A string to identify this type of data object
 		string Class();
+        
+		// A string to identify the file this data item came from
+		string FileName();
 		
 		// Position of this in the input file
 		string Posn();
@@ -39,16 +42,20 @@ public
 		final this(string posn)
 		{
 			m_type = "DEFAULT";
+			m_fileName = "DEFAULT";
 			m_posn = posn;
 		}
 		
-		this(string posn, string type)
+		this(string posn, string type, string fileName)
 		{
-			m_type = type;
-			m_posn = posn;
+			m_type     = type;
+			m_fileName = fileName;
+			m_posn     = posn;
 		}
 		
 		final string Class() {return m_type;}
+        
+		final string FileName() {return m_fileName;}
 		
 		override string Posn()
 		{
@@ -90,6 +97,7 @@ public
 		
 		private
 		{
+            string m_fileName;
 			string m_posn;
 			string m_type;
 		}
@@ -103,6 +111,8 @@ public
 		}
 		
 		final string Class() {return "SUPER";}
+		
+		final string FileName() {return "SUPER";}
 		
 		override string Posn()
 		{
@@ -191,6 +201,18 @@ public
 			else
 			{
 				return "DATA_STACK";
+			}
+		}
+		
+		string FileName()
+		{
+			if (!m_stack.empty())
+			{
+				return m_stack.front().Data().FileName();
+			}
+			else
+			{
+				return "stdin";
 			}
 		}
 		

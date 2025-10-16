@@ -53,6 +53,12 @@ public
 			case "KEBAB":
 			case "LOWER2":
 				return BuildLower2(DecomposeName(text));
+                
+			case "SENTENCE":
+				return BuildSentence(DecomposeName(text));
+                
+			case "TEXT":
+				return BuildText(DecomposeName(text));
 				
 			default:
 				return text;
@@ -846,6 +852,59 @@ private  // FormatName
 		return text[].idup;
 	}
 	
+	pure string BuildSentence(string[] parts)
+	{
+		Appender!(char[]) text;
+		
+		bool first = true;
+		bool firstWord = true;
+		foreach(word ; parts)
+		{
+			if (!firstWord)
+			{
+				text.put(' ');
+			}
+			
+			firstWord = false;
+			foreach (ch ; word)
+			{
+                if (first)
+                {
+                    first = false;
+                    text.put(toUpper(ch));
+                }
+                else
+                {
+                    text.put(toLower(ch));
+                }
+			}
+		}
+		
+		return text[].idup;
+	}
+	
+	pure string BuildText(string[] parts)
+	{
+		Appender!(char[]) text;
+		
+		bool firstWord = true;
+		foreach(word ; parts)
+		{
+			if (!firstWord)
+			{
+				text.put(' ');
+			}
+			
+			firstWord = false;
+			foreach (ch ; word)
+			{
+                text.put(toLower(ch));
+			}
+		}
+		
+		return text[].idup;
+	}
+	
 	
 	unittest
 	{
@@ -946,13 +1005,32 @@ private  // FormatName
 	
 	unittest
 	{
-		auto list = DecomposeName("hello World	BILL    lois");
+		auto list = DecomposeName("hello World	BILL -  lois");
 		writeln(list);
 		assert (list.length == 4);
 		assert (list[0] == "hello");
 		assert (list[1] == "World");
 		assert (list[2] == "BILL");
 		assert (list[3] == "lois");
+	}
+	
+	unittest
+	{
+		auto list = DecomposeName("hello World:	BILL -  lois");
+		writeln(list);
+		assert (list.length == 4);
+		assert (list[0] == "hello");
+		assert (list[1] == "World:");
+		assert (list[2] == "BILL");
+		assert (list[3] == "lois");
+		assert (BuildCamel(list)    == "helloWorld:BillLois");
+		assert (BuildPascal(list)   == "HelloWorld:BillLois");
+		assert (BuildUpper1(list)   == "HELLO_WORLD:_BILL_LOIS");
+		assert (BuildLower1(list)   == "hello_world:_bill_lois");
+		assert (BuildUpper2(list)   == "HELLO-WORLD:-BILL-LOIS");
+		assert (BuildLower2(list)   == "hello-world:-bill-lois");
+		assert (BuildSentence(list) == "Hello world: bill lois");
+		assert (BuildText(list)     == "hello world: bill lois");
 	}
 }
 

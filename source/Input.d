@@ -42,6 +42,19 @@ public
 			}
 		}
 		
+		string FileName()
+		{
+			if (!m_stack.empty())
+			{
+				auto active = m_stack.front();
+				return baseName(active.Name(), extension(active.Name()));
+			}
+			else
+			{
+				return "stdin";
+			}
+		}
+		
 		string ReadLine()
 		{
 			if (Eof())

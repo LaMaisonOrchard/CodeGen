@@ -200,6 +200,7 @@ namespace ![CONFIG:namespace]!
     USER            = ![USER]!
     USERNAME        = ![USERNAME]!
     TMPL            = ![TMPL]!           -- Name of the template.
+    FILE_NAME       = ![FILE_NAME]!      -- Name of the data file.
     CLASS           = ![CLASS]!          -- The class or type of the current data object
     TMPL_VERSION    = ![TMPL_VERSION]!   -- Template version
     ![FILE]!        = FileName
@@ -211,6 +212,8 @@ namespace ![CONFIG:namespace]!
     ![FILE:UPPER2]! = FILE-NAME
     ![FILE:LOWER2]! = file-name
     ![FILE:KEBAB]!  = file-name
+    ![FILE:TEXT]!   = file name
+    ![FILE:SENTENCE]!  = File name
     ![VALUE]!       = 26
     ![VALUE:INT]!   = 26                  -- For text that can be interpreted as a value.
     ![VALUE:INT2]!  = 26                  -- For text that can be interpreted as a value.

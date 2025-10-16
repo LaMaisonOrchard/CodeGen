@@ -67,6 +67,7 @@ private
 	{
 		this(Tokenise input)
 		{
+            m_fileName = input.FileName();
 			m_error = false;
 			m_posn  = input.Posn();
 			Parse(input);
@@ -81,6 +82,12 @@ private
 		override string Class()
 		{
 			return "JSON";
+		}
+		
+		// A string to identify this type of data object
+		override string FileName()
+		{
+			return m_fileName;
 		}
 		
 		// Position of this in the input file
@@ -248,7 +255,7 @@ private
 					case Type.STRING:
 					case Type.VALUE:
 					case Type.LITTERAL:
-						list ~= new ValueBlock(input.Posn(), token.text);
+						list ~= new ValueBlock(input.Posn(), token.text, input.FileName());
 						token = input.Get();
 						break;
 						
@@ -353,14 +360,16 @@ private
 		string[string]       m_blocks;
 		IDataBlock[string]   m_using;
 		IDataBlock[][string] m_list;
+        string m_fileName;
 		string m_posn;
 		bool   m_error;
 	}
 	
 	final class ValueBlock : IDataBlock
 	{
-		this(string posn, string value)
+		this(string posn, string value, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn  = posn;
 			m_value = value;
 		}
@@ -369,6 +378,12 @@ private
 		override string Class()
 		{
 			return "JSON_VALUE";
+		}
+		
+		// A string to identify this type of data object
+		override string FileName()
+		{
+			return m_fileName;
 		}
 		
 		// Position of this in the input file
@@ -405,6 +420,7 @@ private
 		{
 		}
 		
+        string m_fileName;
 		string m_posn;
 		string m_value;
 	}
@@ -436,6 +452,11 @@ private
 			m_error = false;
 			m_input = input;
 			m_posn  = "<START>";
+		}
+		
+		string FileName()
+		{
+			return m_input.FileName();
 		}
 		
 		string Posn()

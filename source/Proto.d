@@ -75,6 +75,11 @@ private
         {
             return "BASE_CLASS";
         }
+
+		override string FileName()
+		{
+			return m_fileName;
+		}
 		
 		string TrueClass()
         {
@@ -129,6 +134,7 @@ private
             }
         }
         
+        string            m_fileName;
         string            m_class;
         ProtoData         m_owner;
         ProtoData[string] m_typeList;
@@ -138,6 +144,7 @@ private
 	{
 		this(Tokenise input)
 		{
+            m_fileName = input.FileName();
 			m_error = false;
 			m_posn  = input.Posn();
 			Parse(input);
@@ -462,7 +469,7 @@ private
 				// Value list
 				while (token.type == Type.VALUE)
 				{
-					list ~= new ValueObj(token);
+					list ~= new ValueObj(token, input.FileName());
 					token = input.Get();
 				}
 
@@ -492,7 +499,7 @@ private
 				while ((token.type == Type.NAME) ||
 			           (token.type == Type.TEXT))
 				{
-					list ~= new TextObj(token);
+					list ~= new TextObj(token, input.FileName());
 					token = input.Get();
 				}
 
@@ -533,7 +540,7 @@ private
 			}
 			else
 			{
-				auto obj = new DataObject(this, this, classDefn, name);
+				auto obj = new DataObject(this, this, classDefn, name, input.FileName());
 
 				if (!IsValid("proto", classDefn.text))
 				{
@@ -627,8 +634,9 @@ private
 
 	class DataObject : ProtoData
 	{
-		this(ProtoBlock root, ProtoData owner, Token className, Token name)
+		this(ProtoBlock root, ProtoData owner, Token className, Token name, string fileName)
 		{
+            m_fileName = fileName;
 			m_root  = root;
 			m_owner = owner;
 			m_posn  = name.posn;
@@ -918,12 +926,12 @@ private
                             if (token.type == Type.VALUE)
                             {
                                 typeName ~= token.text;
-                                m_typeObj = new FixedArray(name, typeObj, token.text);
+                                m_typeObj = new FixedArray(name, typeObj, token.text, input.FileName());
                                 token = input.Get();
                             }
                             else
                             {
-                                m_typeObj = new VarArray(name, typeObj);
+                                m_typeObj = new VarArray(name, typeObj, input.FileName());
                             }
                             
                             if (token.type != Type.CLOSE_SQR)
@@ -996,7 +1004,7 @@ private
 				// Value list
 				while (token.type == Type.VALUE)
 				{
-					list ~= new ValueObj(token);
+					list ~= new ValueObj(token, input.FileName());
 					token = input.Get();
 				}
 
@@ -1026,7 +1034,7 @@ private
 				while ((token.type == Type.NAME) ||
 			           (token.type == Type.TEXT))
 				{
-					list ~= new TextObj(token);
+					list ~= new TextObj(token, input.FileName());
 					token = input.Get();
 				}
 
@@ -1088,7 +1096,7 @@ private
 			}
 			else
 			{
-				auto obj = new DataObject(m_root, this, classDefn, name);
+				auto obj = new DataObject(m_root, this, classDefn, name, input.FileName());
 
 				if (!m_root.IsValid(m_class, classDefn.text))
 				{
@@ -1151,12 +1159,12 @@ private
                 if (token.type == Type.VALUE)
                 {
                     typeName ~= token.text;
-                    typeObj = new FixedArray(type, typeObj, token.text);
+                    typeObj = new FixedArray(type, typeObj, token.text, input.FileName());
                     token = input.Get();
                 }
                 else
                 {
-                    typeObj = new VarArray(type, typeObj);
+                    typeObj = new VarArray(type, typeObj, input.FileName());
                 }
                 
                 if (token.type != Type.CLOSE_SQR)
@@ -1202,24 +1210,24 @@ private
 					if ((token.type == Type.NAME) ||
 						(token.type == Type.TEXT))
 					{
-						AddField(type, typeObj, name, value.text, token.text, optional);
+						AddField(type, typeObj, name, value.text, token.text, optional, input.FileName());
 					}
 					else
 					{
 						input.Put(token);
-						AddField(type, typeObj, name, value.text, "", optional);
+						AddField(type, typeObj, name, value.text, "", optional, input.FileName());
 					}
 				}
 			}
 			else if (token.type == Type.END_STATEMENT)
 			{
 				input.Put(token);
-				AddField(type.text, typeObj, name, "", "", optional);
+				AddField(type.text, typeObj, name, "", "", optional, input.FileName());
 			}
 			else if ((token.type == Type.NAME) ||
 			         (token.type == Type.TEXT))
 			{
-				AddField(type, typeObj, name, "", token.text, optional);
+				AddField(type, typeObj, name, "", token.text, optional, input.FileName());
 			}
 			else
 			{
@@ -1233,9 +1241,9 @@ private
 			}
 		}
 
-		void AddField(string type, IDataBlock typeObj, Token name, string value, string text, bool optional)
+		void AddField(string type, IDataBlock typeObj, Token name, string value, string text, bool optional, string fileName)
 		{
-			m_fields ~= new Field(type, typeObj, name, this, value, text, optional);
+			m_fields ~= new Field(type, typeObj, name, this, value, text, optional, fileName);
 		}
 
         void ParseHeading(Token token, Tokenise input)
@@ -1248,7 +1256,7 @@ private
                     (token.type == Type.TEXT))
                 {
                     m_headingNames ~= token.text;
-                    m_headings ~= new TextObj(token);
+                    m_headings ~= new TextObj(token, input.FileName());
                 }
                 else
                 {
@@ -1293,8 +1301,9 @@ private
 
 	class Field : IDataBlock
 	{
-		this(string type, IDataBlock typeObj, Token name, DataObject owner, string value, string text, bool optional)
+		this(string type, IDataBlock typeObj, Token name, DataObject owner, string value, string text, bool optional, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn = name.posn;
 			m_type = type;
             m_typeObj = typeObj;
@@ -1314,6 +1323,11 @@ private
 		override string Class()
 		{
 			return "FIELD";
+		}
+
+		override string FileName()
+		{
+			return m_fileName;
 		}
 
 		// Position of this in the input file
@@ -1382,6 +1396,7 @@ private
 			writeln(posn, message);
 		}
 
+        string     m_fileName;
 		string     m_posn;
 		string     m_type;
 		string     m_name;
@@ -1394,8 +1409,9 @@ private
 
 	class VarArray : IDataBlock
 	{
-		this(Token type, IDataBlock typeObj)
+		this(Token type, IDataBlock typeObj, string fileName)
 		{
+            m_fileName = fileName;
             m_posn = type.posn;
 			m_typeObj = typeObj;
 		}
@@ -1409,6 +1425,11 @@ private
 		override string Class()
 		{
 			return "VAR_ARRAY";
+		}
+
+		override string FileName()
+		{
+			return m_fileName;
 		}
 
 		// Position of this in the input file
@@ -1448,16 +1469,18 @@ private
 			writeln(posn, message);
 		}
 
+        string m_fileName;
 		string m_posn;
 		IDataBlock m_typeObj;
 	}
 
 	class FixedArray : IDataBlock
 	{
-		this(Token type, IDataBlock typeObj, string size)
+		this(Token type, IDataBlock typeObj, string size, string fileName)
 		{
+            m_fileName = fileName;
             m_posn = type.posn;
-			m_typeObj = typeObj;;
+			m_typeObj = typeObj;
 			m_size = size;
 		}
 
@@ -1470,6 +1493,11 @@ private
 		override string Class()
 		{
 			return "FIXED_ARRAY";
+		}
+
+		override string FileName()
+		{
+			return m_fileName;
 		}
 
 		// Position of this in the input file
@@ -1515,6 +1543,7 @@ private
 			writeln(posn, message);
 		}
 
+        string m_fileName;
 		string m_posn;
 		string m_size;
 		IDataBlock m_typeObj;
@@ -1523,15 +1552,17 @@ private
 
 	class TextObj : IDataBlock
 	{
-		this(Token text)
+		this(Token text, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn = text.posn;
 			m_name = "";
 			m_text = text.text;
 		}
 
-		this(Token name, string text)
+		this(Token name, string text, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn = name.posn;
 			m_name = name.text;
 			m_text = text;
@@ -1546,6 +1577,11 @@ private
 		override string Class()
 		{
 			return "TEXT";
+		}
+
+		override string FileName()
+		{
+			return m_fileName;
 		}
 
 		// Position of this in the input file
@@ -1593,6 +1629,7 @@ private
 			writeln(posn, message);
 		}
 
+        string m_fileName;
 		string m_posn;
 		string m_name;
 		string m_text;
@@ -1600,15 +1637,17 @@ private
 
 	class ValueObj : IDataBlock
 	{
-		this(Token text)
+		this(Token text, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn = text.posn;
 			m_name = "";
 			m_text = text.text;
 		}
 
-		this(Token name, string text)
+		this(Token name, string text, string fileName)
 		{
+            m_fileName = fileName;
 			m_posn = name.posn;
 			m_name = name.text;
 			m_text = text;
@@ -1623,6 +1662,11 @@ private
 		override string Class()
 		{
 			return "VALUE";
+		}
+
+		override string FileName()
+		{
+			return m_fileName;
 		}
 
 		// Position of this in the input file
@@ -1676,6 +1720,7 @@ private
 			writeln(posn, message);
 		}
 
+        string m_fileName;
 		string m_posn;
 		string m_name;
 		string m_text;
@@ -1685,6 +1730,7 @@ private
 	{
 		this(Token token, ProtoData owner, string[] headings, Tokenise input)
 		{
+            m_fileName = input.FileName();
 			m_posn  = token.posn;
             m_owner = owner;
             m_error = false;
@@ -1825,12 +1871,12 @@ private
                             if (token.type == Type.VALUE)
                             {
                                 typeName ~= token.text;
-                                m_typeObj = new FixedArray(token, typeObj, token.text);
+                                m_typeObj = new FixedArray(token, typeObj, token.text, input.FileName());
                                 token = input.Get();
                             }
                             else
                             {
-                                m_typeObj = new VarArray(token, typeObj);
+                                m_typeObj = new VarArray(token, typeObj, input.FileName());
                             }
                             
                             if (token.type != Type.CLOSE_SQR)
@@ -1855,12 +1901,12 @@ private
                          (token.type == Type.TEXT))
                 {
                     m_textBlocks[FormatName(headings[idx], "UPPER1")] = token.text;
-                    m_entries ~= new TextObj(token);
+                    m_entries ~= new TextObj(token, input.FileName());
                 }
                 else if (token.type == Type.VALUE)
                 {
                     m_valueBlocks[FormatName(headings[idx], "UPPER1")] = token.text;
-                    m_entries ~= new ValueObj(token);
+                    m_entries ~= new ValueObj(token, input.FileName());
                 }
                 else
                 {
@@ -1894,6 +1940,7 @@ private
         }
 
 		string m_posn;
+        string m_fileName;
 		string[string] m_textBlocks;
 		string[string] m_valueBlocks;
         IDataBlock     m_typeObj;
@@ -1937,6 +1984,11 @@ private
 			m_input = input;
 			m_token.type = Type.EOF;
 			m_posn  = "<START>";
+		}
+		
+		string FileName()
+		{
+			return m_input.FileName();
 		}
 		
 		string Posn()
