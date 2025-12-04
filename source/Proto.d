@@ -2241,33 +2241,58 @@ private
 				return Token(Type.TEXT, "");
 			}
 			
-			auto ch = m_input.Get();
-			while ((ch != '\0') && (ch != leadCh) && (ch != '\n') && (ch != '\r'))
-			{
-				if (!m_input.Eof() && (ch == '\\'))
-				{
-					ch = m_input.Get();
-					switch (ch)
-					{
-						case 'n' : m_text.put('\n'); break;
-						case 'r' : m_text.put('\r'); break;
-						case 't' : m_text.put('\t'); break;
-						default  : m_text.put(ch); break;
-					}
-				}
-				else
-				{
-					m_text.put(ch);
-				}
-				ch = m_input.Get();
-			}
+            bool concat = true;
+            
+            while (concat)
+            {
+                concat = false;
+                auto ch = m_input.Get();
+                while ((ch != '\0') && (ch != leadCh) && (ch != '\n') && (ch != '\r'))
+                {
+                    if (!m_input.Eof() && (ch == '\\'))
+                    {
+                        ch = m_input.Get();
+                        switch (ch)
+                        {
+                            case 'n' : m_text.put('\n'); break;
+                            case 'r' : m_text.put('\r'); break;
+                            case 't' : m_text.put('\t'); break;
+                            default  : m_text.put(ch); break;
+                        }
+                    }
+                    else
+                    {
+                        m_text.put(ch);
+                    }
+                    ch = m_input.Get();
+                }
+                
+                if (ch != leadCh)
+                {
+                    Error(m_input.Posn(), "Unterminated string : " ~ m_text[].idup);
+                }
+                else
+                {
+                    ch = m_input.Get();
+                    while (isWhite(ch))
+                    {
+                        ch = m_input.Get();
+                    }
+                    
+                    if (ch != leadCh)
+                    {
+                        // Finished
+                        m_input.Put(ch);
+                    }
+                    else
+                    {
+                        // Concatinate the next quoted string
+                        concat = true;
+                    }
+                }
+            }
 			
 			auto text = m_text[].idup;
-			
-			if (ch != leadCh)
-			{
-				Error(m_input.Posn(), "Unterminated string : " ~ text);
-			}
 			
 			return Token(Type.TEXT, text, m_input.Posn());
 		}
@@ -2756,6 +2781,25 @@ private
 		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
         
 		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 27");
+		auto text = "object(proto, fred); fred bill { NAME = \"Billbo\" \"Bagins\";}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAME", ""));
+		assert(outputText.Text() == "BillboBagins");
+    }
+    
+	unittest
+	{
+        writeln("Proto test Final");
     }
 }
 
