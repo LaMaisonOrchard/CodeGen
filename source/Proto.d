@@ -464,58 +464,35 @@ private
 
 			IDataBlock[] list;
 
-			if (token.type == Type.VALUE)
-			{
-				// Value list
-                list ~= new ValueObj(token, input.FileName());
-                token = input.Get();
-				while (token.type == Type.SEP)
-				{
-                    token = input.Get();
-                    if (token.type == Type.VALUE)
-                    {
-                        list ~= new ValueObj(token, input.FileName());
-                        token = input.Get();
-                    }
-                    else
-                    {
-                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
-                        StripStatement(input, token);
-                    }
-				}
-
-				if (token.type != Type.CLOSE_BRACE)
-				{
-					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
-					StripStatement(input, token);
-				}
-				else
-				{
-					token = input.Get();
-					if (token.type != Type.END_STATEMENT)
-					{
-						Error(token.posn, "Unterminated list statement (expected ; )");
-						StripStatement(input, token);
-					}
-					else
-					{
-						AddList(name.text, list);
-					}
-				}
-			}
-			else if ((token.type == Type.NAME) ||
-			         (token.type == Type.TEXT))
+			if ((token.type == Type.VALUE) ||
+                (token.type == Type.NAME) ||
+                (token.type == Type.TEXT))
 			{
 				// Text list
-                list ~= new TextObj(token, input.FileName());
+                if (token.type == Type.VALUE)
+                {
+                    list ~= new ValueObj(token, input.FileName());
+                }
+                else
+                {
+                    list ~= new TextObj(token, input.FileName());
+                }
                 token = input.Get();
 				while (token.type == Type.SEP)
 				{
                     token = input.Get();
-                    if ((token.type == Type.NAME) ||
+                    if ((token.type == Type.VALUE) ||
+                        (token.type == Type.NAME) ||
 			            (token.type == Type.TEXT))
                     {
-                        list ~= new TextObj(token, input.FileName());
+                        if (token.type == Type.VALUE)
+                        {
+                            list ~= new ValueObj(token, input.FileName());
+                        }
+                        else
+                        {
+                            list ~= new TextObj(token, input.FileName());
+                        }
                         token = input.Get();
                     }
                     else
@@ -1034,58 +1011,35 @@ private
 
 			IDataBlock[] list;
 
-			if (token.type == Type.VALUE)
-			{
-				// Value list
-                list ~= new ValueObj(token, input.FileName());
-                token = input.Get();
-				while (token.type == Type.SEP)
-				{
-                    token = input.Get();
-                    if (token.type == Type.VALUE)
-                    {
-                        list ~= new ValueObj(token, input.FileName());
-                        token = input.Get();
-                    }
-                    else
-                    {
-                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
-                        StripStatement(input, token);
-                    }
-				}
-
-				if (token.type != Type.CLOSE_BRACE)
-				{
-					Error(token.posn, "Unterminated list : [" ~ token.text ~ "] (expected } )");
-					StripStatement(input, token);
-				}
-				else
-				{
-					token = input.Get();
-					if (token.type != Type.END_STATEMENT)
-					{
-						Error(token.posn, "Unterminated list statement (expected ; )");
-						StripStatement(input, token);
-					}
-					else
-					{
-						AddList(name.text, list);
-					}
-				}
-			}
-			else if ((token.type == Type.NAME) ||
-			         (token.type == Type.TEXT))
+			if ((token.type == Type.VALUE) ||
+                (token.type == Type.NAME) ||
+                (token.type == Type.TEXT))
 			{
 				// Text list
-                list ~= new TextObj(token, input.FileName());
+                if (token.type == Type.VALUE)
+                {
+                    list ~= new ValueObj(token, input.FileName());
+                }
+                else
+                {
+                    list ~= new TextObj(token, input.FileName());
+                }
                 token = input.Get();
 				while (token.type == Type.SEP)
 				{
                     token = input.Get();
-                    if ((token.type == Type.NAME) ||
+                    if ((token.type == Type.VALUE) ||
+                        (token.type == Type.NAME) ||
 			            (token.type == Type.TEXT))
                     {
-                        list ~= new TextObj(token, input.FileName());
+                        if (token.type == Type.VALUE)
+                        {
+                            list ~= new ValueObj(token, input.FileName());
+                        }
+                        else
+                        {
+                            list ~= new TextObj(token, input.FileName());
+                        }
                         token = input.Get();
                     }
                     else
@@ -2381,7 +2335,7 @@ private
 	}
 }
 
-//// Tokenise //////////////////////////////////////////////
+//// Unit Tests //////////////////////////////////////////////
 private
 {
 	unittest
@@ -2928,7 +2882,10 @@ private
         
         auto outputText = new TextOutput();
         
-		assert(root.HasError());
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAMES", ""));
+		assert(outputText.Text() == "2");
     }
     
 	unittest
