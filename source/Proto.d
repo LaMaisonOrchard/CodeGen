@@ -467,10 +467,21 @@ private
 			if (token.type == Type.VALUE)
 			{
 				// Value list
-				while (token.type == Type.VALUE)
+                list ~= new ValueObj(token, input.FileName());
+                token = input.Get();
+				while (token.type == Type.SEP)
 				{
-					list ~= new ValueObj(token, input.FileName());
-					token = input.Get();
+                    token = input.Get();
+                    if (token.type == Type.VALUE)
+                    {
+                        list ~= new ValueObj(token, input.FileName());
+                        token = input.Get();
+                    }
+                    else
+                    {
+                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
+                        StripStatement(input, token);
+                    }
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
@@ -496,11 +507,22 @@ private
 			         (token.type == Type.TEXT))
 			{
 				// Text list
-				while ((token.type == Type.NAME) ||
-			           (token.type == Type.TEXT))
+                list ~= new TextObj(token, input.FileName());
+                token = input.Get();
+				while (token.type == Type.SEP)
 				{
-					list ~= new TextObj(token, input.FileName());
-					token = input.Get();
+                    token = input.Get();
+                    if ((token.type == Type.NAME) ||
+			            (token.type == Type.TEXT))
+                    {
+                        list ~= new TextObj(token, input.FileName());
+                        token = input.Get();
+                    }
+                    else
+                    {
+                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
+                        StripStatement(input, token);
+                    }
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
@@ -522,7 +544,20 @@ private
 					}
 				}
 			}
-			else
+			else if (token.type == Type.CLOSE_BRACE)
+            {
+                token = input.Get();
+                if (token.type != Type.END_STATEMENT)
+                {
+                    Error(token.posn, "Unterminated list statement (expected ; )");
+                    StripStatement(input, token);
+                }
+                else
+                {
+                    AddList(name.text, list);
+                }
+            }
+            else
 			{
 				Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
 				StripStatement(input, token);
@@ -1002,10 +1037,21 @@ private
 			if (token.type == Type.VALUE)
 			{
 				// Value list
-				while (token.type == Type.VALUE)
+                list ~= new ValueObj(token, input.FileName());
+                token = input.Get();
+				while (token.type == Type.SEP)
 				{
-					list ~= new ValueObj(token, input.FileName());
-					token = input.Get();
+                    token = input.Get();
+                    if (token.type == Type.VALUE)
+                    {
+                        list ~= new ValueObj(token, input.FileName());
+                        token = input.Get();
+                    }
+                    else
+                    {
+                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
+                        StripStatement(input, token);
+                    }
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
@@ -1031,11 +1077,22 @@ private
 			         (token.type == Type.TEXT))
 			{
 				// Text list
-				while ((token.type == Type.NAME) ||
-			           (token.type == Type.TEXT))
+                list ~= new TextObj(token, input.FileName());
+                token = input.Get();
+				while (token.type == Type.SEP)
 				{
-					list ~= new TextObj(token, input.FileName());
-					token = input.Get();
+                    token = input.Get();
+                    if ((token.type == Type.NAME) ||
+			            (token.type == Type.TEXT))
+                    {
+                        list ~= new TextObj(token, input.FileName());
+                        token = input.Get();
+                    }
+                    else
+                    {
+                        Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
+                        StripStatement(input, token);
+                    }
 				}
 
 				if (token.type != Type.CLOSE_BRACE)
@@ -1057,6 +1114,19 @@ private
 					}
 				}
 			}
+			else if (token.type == Type.CLOSE_BRACE)
+            {
+                token = input.Get();
+                if (token.type != Type.END_STATEMENT)
+                {
+                    Error(token.posn, "Unterminated list statement (expected ; )");
+                    StripStatement(input, token);
+                }
+                else
+                {
+                    AddList(name.text, list);
+                }
+            }
 			else
 			{
 				Error(token.posn, "Invalid list item : [" ~ token.text ~ "]");
@@ -2795,6 +2865,103 @@ private
 		assert(root.List(false, "FRED")[0]);
 		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAME", ""));
 		assert(outputText.Text() == "BillboBagins");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 28");
+		auto text = "object(proto, fred); fred bill { NAME = {};}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAMES", ""));
+		assert(outputText.Text() == "0");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 29");
+		auto text = "object(proto, fred); fred bill { NAME = { david };}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAMES", ""));
+		assert(outputText.Text() == "1");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 30");
+		auto text = "object(proto, fred); fred bill { NAME = { david, orchard };}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(!root.HasError());
+		assert(root.List(false, "FRED")[0]);
+		assert(root.List(false, "FRED")[1].front.DoBlock(outputText, "NAMES", ""));
+		assert(outputText.Text() == "2");
+    }
+    
+	unittest
+	{
+        writeln("Proto test 31");
+		auto text = "object(proto, fred); fred bill { NAME = david, orchard};}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 32");
+		auto text = "object(proto, fred); fred bill { NAME = {david, 78};}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 33");
+		auto text = "object(proto, fred); fred bill { NAME = { david, };}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 34");
+		auto text = "object(proto, fred); fred bill { NAME = { david, orchard;}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(root.HasError());
+    }
+    
+	unittest
+	{
+        writeln("Proto test 35");
+		auto text = "object(proto, fred); fred bill { NAME = { david, orchard}}";
+		auto root = new ProtoBlock(new Tokenise(new InputStack(new LitteralInput(text))));
+        
+        auto outputText = new TextOutput();
+        
+		assert(root.HasError());
     }
     
 	unittest
