@@ -340,7 +340,7 @@ message sendMe
 {
     ID = 1;                     // Named value
     DEST = control;             // Named text
-    SRC = [ ui, WiFi ];         // Named list
+    SRC = { ui, WiFi };         // Named list
     
     uint8 src  = 1 "Source id"; // Full field
     uint8 dest = 2;             // No optional text
