@@ -128,6 +128,9 @@ There are also a number of special reference types.
 !FIL ROOT file.txt
 Somthing![COL 30]!:This will be in column 30
 Somthing![TAB 10]!:This will a tabbed 10 spaces.
+![HAS HARRY:fred]!     // Returns TRUE if 'HARRY:fred' matches a block (otherwise FALSE)
+![HAS USING FRED]!     // Returns TRUE if the current data object has a 'USING FRED' (otherwise FALSE)
+![HAS LIST  FRED]!     // Returns TRUE if the current data object has a list 'FRED' (otherwise FALSE)
 !END
 ```
 

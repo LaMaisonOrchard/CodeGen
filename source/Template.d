@@ -19,7 +19,7 @@ import Output;
 import Data;
 import Utilities;
 
-enum string VERSION = "1.1.0";
+enum string VERSION = "1.2.0";
 
 public
 {	
@@ -67,30 +67,42 @@ public
 		{
 			m_output = new OutputStack(name, dir, copy, isSet("InvertMerge"));
 			m_data   = new DataStack(context);
-			
-			try
-			{
-				auto block = FindBlock("<ROOT>", "ROOT", "");
-				if (block !is null)
-				{
-					block.Generate(m_output, "");
-				}
-				else
-				{
-					Error("<ROOT>", "No ROOT block");
-				}
-			}
-			catch (FatalException ex)
-			{
-				Error(GetMessage(ex));
-			}
-			
-			m_output.Close();
-			m_output = null;
-		}			
+            Generate();            
+        }
+		
+		void Generate(OutputStack output, IDataBlock context)
+		{
+			m_output = output;
+			m_data   = new DataStack(context);
+            Generate();
+		}				
 		
 		private
-		{
+		{	
+		
+            void Generate()
+            {
+                try
+                {
+                    auto block = FindBlock("<ROOT>", "ROOT", "");
+                    if (block !is null)
+                    {
+                        block.Generate(m_output, "");
+                    }
+                    else
+                    {
+                        Error("<ROOT>", "No ROOT block");
+                    }
+                }
+                catch (FatalException ex)
+                {
+                    Error(GetMessage(ex));
+                }
+                
+                m_output.Close();
+                m_output = null;
+            }
+        
 			void Error(string[] params ...)
 			{
 				m_error = true;
@@ -358,6 +370,103 @@ public
 				Block  m_subtype;
 			}
 			
+			class HasRef : BaseRef
+			{
+				this(string posn, string name, Block subtype)
+				{
+					super(posn);
+					m_name    = name;
+					m_subtype = subtype;
+				}
+				
+				
+				override void Expand(OutputStack output, string callSubtype)
+				{
+					string subtype = "";
+					if (m_subtype !is null)
+					{
+						auto text = new TextOutput();
+						auto stack  = new OutputStack(text);
+						m_subtype.Generate(stack, callSubtype);
+						subtype = text.Text();
+						stack.Close();
+					}
+
+					if (this.outer.FindBlock(Posn(), m_name, subtype) !is null)
+					{
+						// Template block exists
+						output.Write("TRUE");
+					}
+					else if (this.outer.m_data.DoBlock(output, m_name, subtype))
+					{
+						// Data block exists
+						output.Write("TRUE");	
+					}
+					else
+					{
+						// No such block
+						output.Write("FALSE");
+					}
+				}
+				
+				string m_posn;
+				string m_name;
+				Block  m_subtype;
+			}
+			
+			class HasUsingRef : BaseRef
+			{
+				this(string posn, string name)
+				{
+					super(posn);
+					m_name    = name;
+				}
+				
+				override void Expand(OutputStack output, string callSubtype)
+				{
+					if (this.outer.m_data.Using(m_name) !is null)
+					{
+						// Using is possible
+						output.Write("TRUE");	
+					}
+					else
+					{
+						// No such block
+						output.Write("FALSE");
+					}
+				}
+				
+				string m_posn;
+				string m_name;
+			}
+			
+			class HasListRef : BaseRef
+			{
+				this(string posn, string name)
+				{
+					super(posn);
+					m_name    = name;
+				}
+				
+				override void Expand(OutputStack output, string callSubtype)
+				{
+					auto list = this.outer.m_data.List(false, m_name);
+					if (list[0])
+					{
+						// Using is possible
+						output.Write("TRUE");	
+					}
+					else
+					{
+						// No such block
+						output.Write("FALSE");
+					}
+				}
+				
+				string m_posn;
+				string m_name;
+			}
+			
 			// A reference to a block in the context of a sub-data item of the current data item
 			class UsingRef : BaseRef
 			{
@@ -469,7 +578,7 @@ public
 							{
 								auto text = new TextOutput();
 								auto stack  = new OutputStack(text);
-								m_subtype.Generate(stack, subtype);
+								m_subtype.Generate(stack, callSubtype);
 								subtype = text.Text();
 								stack.Close();
 							}
@@ -1269,6 +1378,58 @@ public
 						line = ParseSubtype(posn, line, tab);
 						return new TabRef(posn, tab);
 						
+					case "HAS":
+						op = name;
+						//strip white space
+						while ((i < line.length) && isWhite(line[i])) {i += 1;}
+						
+						// Get the name
+						start = i;
+						while ((i < line.length) && IsBlockNameChar(line[i]))
+						{
+							i += 1;
+						}
+						name = (start < i)?(line[start .. i]):("");
+
+						if (name == "USING")
+						{
+							name = "";
+							
+							//strip white space
+							while ((i < line.length) && isWhite(line[i])) {i += 1;}
+							
+							// Get the item
+							start = i;
+							while ((i < line.length) && IsBlockNameChar(line[i]))
+							{
+								i += 1;
+							}
+							item = (start < i)?(line[start .. i]):("");
+
+							return new HasUsingRef(posn, item);
+						}
+
+						if (name == "LIST")
+						{
+							name = "";
+							
+							//strip white space
+							while ((i < line.length) && isWhite(line[i])) {i += 1;}
+							
+							// Get the item
+							start = i;
+							while ((i < line.length) && IsBlockNameChar(line[i]))
+							{
+								i += 1;
+							}
+							item = (start < i)?(line[start .. i]):("");
+
+							return new HasListRef(posn, item);
+						}
+
+
+						break;
+						
 					case "USING":
 						op = name;
 						name = "";
@@ -1416,6 +1577,10 @@ public
 						reference = new UsingRef(posn, item, name, subtype);
 						break;
 						
+					case "HAS":
+						reference = new HasRef(posn, name, subtype);
+						break;
+						
 					case "FOREACH":
 					case "LIST":
 						reference = new LoopRef(posn, leaf, item, sep, name, subtype);
@@ -1516,6 +1681,7 @@ private
 {
 	unittest
 	{
+		writeln("Template Test 1");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred true\n!SET harry false")));
 		
 		assert (tmpl.isSet("fred"));
@@ -1526,6 +1692,7 @@ private
 	
 	unittest
 	{
+		writeln("Template Test 2");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred 1\n!SET harry 0")));
 		
 		assert (tmpl.isSet("fred"));
@@ -1536,6 +1703,7 @@ private
 	
 	unittest
 	{
+		writeln("Template Test 3");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!SET fred True\n!SET harry False")));
 		
 		assert (!tmpl.isSet("fred"));
@@ -1546,6 +1714,7 @@ private
 	
 	unittest
 	{
+		writeln("Template Test 4");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT =![FRED]!")));
 		
 		assert (!tmpl.HasError);
@@ -1553,6 +1722,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 5");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT =[FRED]!")));
 
 		assert (!tmpl.HasError);
@@ -1560,6 +1730,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 6");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT=FRED")));
 
 		assert (!tmpl.HasError);
@@ -1575,6 +1746,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 7");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT = FRED")));
 
 		assert (!tmpl.HasError);
@@ -1590,6 +1762,29 @@ private
 
 	unittest
 	{
+		writeln("Template Test 8");
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill=FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "");
+		assert(block is null);
+	}
+
+	unittest
+	{
+		writeln("Template Test 9");
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill=FRED")));
+
+		assert (!tmpl.HasError);
+
+		auto block = tmpl.FindBlock("unitest", "ROOT", "Harry");
+		assert(block is null);
+	}
+
+	unittest
+	{
+		writeln("Template Test 10");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill=FRED")));
 
 		assert (!tmpl.HasError);
@@ -1605,6 +1800,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 11");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:Bill==FRED=")));
 
 		assert (!tmpl.HasError);
@@ -1620,6 +1816,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 12");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT:?<>£$%^&*()!#@{}[]=FRED")));
 
 		assert (!tmpl.HasError);
@@ -1635,6 +1832,7 @@ private
 
 	unittest
 	{
+		writeln("Template Test 13");
 		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT=![FRED]!\n!ERR FRED=harry")));
 
 		assert (!tmpl.HasError);
@@ -1643,6 +1841,27 @@ private
 		tmpl.Generate("stdout", data, "tmp", "other");
 
 		assert (tmpl.HasError);
+	}
+
+	unittest
+	{
+		writeln("Template Test 14");
+		auto tmpl = new Template(new InputStack(new LitteralInput("!BLK ROOT=![FRED:HARRY]!\n!BLK FRED=![_FRED:(SUBTYPE)]!\n!BLK _FRED=![SUBTYPE]!")));
+
+		assert (!tmpl.HasError);
+
+		IDataBlock data = new DefaultDataBlock("Test:001");
+		auto outData = new TextOutput();
+		auto output = new OutputStack(outData);
+		tmpl.Generate(output, data);
+		assert(outData.Text() == "HARRY");
+
+		assert (!tmpl.HasError);
+	}
+
+	unittest
+	{
+		writeln("Template test Final");
 	}
 				
 	bool IsBlockNameChar(char ch)
